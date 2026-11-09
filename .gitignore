@@ -1,0 +1,27 @@
+# 构建产物
+build/
+.gradle/
+local.properties
+
+# 签名文件绝不入库
+keystore/
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+
+# 测试产物与分析中间物（体积大、可重现）
+test-artifacts/
+_archive-*/
+
+# 解压出的 APK 内容
+hivision-x/
+*.apk
+*.b64
+*.db
+*.db-wal
+*.db-shm
+# JVM 堆转储
+*.hprof
