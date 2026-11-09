@@ -3,6 +3,7 @@ package cn.levanll.inventory.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import cn.levanll.inventory.i18n.I18n
 import cn.levanll.inventory.data.dao.CategoryPick
 import cn.levanll.inventory.data.dao.CategoryStat
 import cn.levanll.inventory.data.dao.ItemWithCategory
@@ -200,7 +201,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } catch (e: Exception) {
                 _inventory.value = _inventory.value.copy(loading = false)
-                _toast.value = "读取失败：${e.message}"
+                _toast.value = I18n.s("读取失败：${e.message}", "Load failed: ${e.message}")
             }
         }
     }
@@ -237,7 +238,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val item = _inventory.value.items.firstOrNull { it.id == itemId } ?: return
         val next = item.quantity + delta
         if (next < 0) {
-            _toast.value = "已经是 0 了"
+            _toast.value = I18n.s("已经是 0 了", "Already 0")
             return
         }
         viewModelScope.launch {
@@ -260,7 +261,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) { inv.deleteZeroItem(itemId) }
                 refreshInventory()
                 refreshStatsIfCurrentMonth()
-                _toast.value = "已删除「$itemName」"
+                _toast.value = I18n.s("已删除「$itemName」", "Deleted $itemName")
             } catch (e: AppException) {
                 _toast.value = e.message
             }
@@ -273,7 +274,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) { inv.revertRecord(recordId) }
                 refreshInventory()
                 refreshStatsIfCurrentMonth()
-                _toast.value = "已撤销"
+                _toast.value = I18n.s("已撤销", "Undone")
             } catch (e: AppException) {
                 _toast.value = e.message
             }
@@ -357,7 +358,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
             if (info == null) {
                 _inbound.value = _inbound.value.copy(lookingUp = false)
-                _toast.value = "未查到该条码的商品信息，请手动填写"
+                _toast.value = I18n.s(
+                    "未查到该条码的商品信息，请手动填写",
+                    "No product found for this barcode, please fill in manually"
+                )
                 return@launch
             }
 
@@ -385,9 +389,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     shelfLifeDays = item?.shelfLifeDays
                 )
                 _toast.value = if (item != null) {
-                    "识别到已有商品「${info.name}」，将追加数量"
+                    I18n.s(
+                        "识别到已有商品「${info.name}」，将追加数量",
+                        "Found existing item ${info.name}, quantity will be appended"
+                    )
                 } else {
-                    "已从本地记录识别「${info.name}」"
+                    I18n.s("已从本地记录识别「${info.name}」", "Recognized ${info.name} from local records")
                 }
                 return@launch
             }
@@ -513,9 +520,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 _inbound.value = _inbound.value.copy(name = c.newName, nameConflict = null)
                 refreshInventory()
-                _toast.value = "已改为「${c.newName}」"
+                _toast.value = I18n.s("已改为「${c.newName}」", "Renamed to ${c.newName}")
             } catch (e: Exception) {
-                _toast.value = "改名失败：${e.message}"
+                _toast.value = I18n.s("改名失败：${e.message}", "Rename failed: ${e.message}")
             }
         }
     }
@@ -536,9 +543,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     nameConflict = null
                 )
                 refreshInventory()
-                _toast.value = "已解绑旧条目，将新建「${c.newName}」"
+                _toast.value = I18n.s(
+                    "已解绑旧条目，将新建「${c.newName}」",
+                    "Detached from old item, will create ${c.newName}"
+                )
             } catch (e: Exception) {
-                _toast.value = "操作失败：${e.message}"
+                _toast.value = I18n.s("操作失败：${e.message}", "Operation failed: ${e.message}")
             }
         }
     }
@@ -550,7 +560,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** 退出追加模式，转为新建（保留条码，但不再累加到原商品） */
     fun exitAppendMode() {
         _inbound.value = _inbound.value.copy(existingItemId = null, spec = "", qty = 1.0)
-        _toast.value = "已切换为新建商品"
+        _toast.value = I18n.s("已切换为新建商品", "Switched to creating a new item")
     }
 
     fun inboundSpecChanged(v: String) { _inbound.value = _inbound.value.copy(spec = v) }
@@ -695,7 +705,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: _inbound.value.suggests.firstOrNull()?.id
         _inbound.value = _inbound.value.copy(dupPayload = null)
         if (id == null) {
-            _toast.value = "找不到原商品，请另建规格"
+            _toast.value = I18n.s("找不到原商品，请另建规格", "Original item not found, please create a separate spec")
             return
         }
         _inbound.value = _inbound.value.copy(existingItemId = id)
@@ -720,7 +730,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 loadMonth(target, s.tab, months = merged)
             } catch (e: Exception) {
                 _stats.value = s.copy(loading = false)
-                _toast.value = "读取统计失败：${e.message}"
+                _toast.value = I18n.s("读取统计失败：${e.message}", "Failed to load stats: ${e.message}")
             }
         }
     }
@@ -751,7 +761,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } catch (e: Exception) {
                 _stats.value = _stats.value.copy(loading = false)
-                _toast.value = "读取失败：${e.message}"
+                _toast.value = I18n.s("读取失败：${e.message}", "Load failed: ${e.message}")
             }
         }
     }
@@ -796,7 +806,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val rows = withContext(Dispatchers.IO) { stats.detailOfMonth(s.month) }
             _stats.value = s.copy(
                 detailItemId = null,
-                detailItemName = "${s.month.label()}全部流水",
+                detailItemName = I18n.s(
+                    "${s.month.label()}全部流水",
+                    "All records in ${s.month.label()}"
+                ),
                 detailRows = rows,
                 showAllDetails = true
             )
@@ -873,7 +886,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val st = _catManage.value
         val name = st.inputName.trim()
         if (name.isEmpty()) {
-            _catManage.value = st.copy(error = "名称不能为空")
+            _catManage.value = st.copy(error = I18n.s("名称不能为空", "Name cannot be empty"))
             return
         }
         viewModelScope.launch {
@@ -888,7 +901,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _catManage.value = _catManage.value.copy(editing = false, error = null)
                 loadCategoryManage()
                 refreshInboundCategories()
-                _toast.value = if (st.editingId == null) "已创建「$name」" else "已重命名"
+                _toast.value = if (st.editingId == null) {
+                    I18n.s("已创建「$name」", "Created $name")
+                } else {
+                    I18n.s("已重命名", "Renamed")
+                }
             } catch (e: AppException) {
                 _catManage.value = _catManage.value.copy(error = e.message)
             }
@@ -902,7 +919,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) { catSvc.delete(id) }
                 loadCategoryManage()
                 refreshInboundCategories()
-                _toast.value = "已删除"
+                _toast.value = I18n.s("已删除", "Deleted")
             } catch (e: AppException) {
                 _toast.value = e.message
             }
@@ -916,7 +933,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 loadCategoryManage()
                 refreshInboundCategories()
                 refreshInventory()
-                _toast.value = "已迁移并删除"
+                _toast.value = I18n.s("已迁移并删除", "Migrated and deleted")
             } catch (e: AppException) {
                 _toast.value = e.message
             }

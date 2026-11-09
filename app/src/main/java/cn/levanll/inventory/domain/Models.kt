@@ -83,7 +83,12 @@ data class YearMonth(val year: Int, val month: Int) : Comparable<YearMonth> {
 
     fun prev(): YearMonth = if (month == 1) YearMonth(year - 1, 12) else YearMonth(year, month - 1)
     fun next(): YearMonth = if (month == 12) YearMonth(year + 1, 1) else YearMonth(year, month + 1)
-    fun label(): String = "${year}年${month}月"
+    fun label(): String = if (cn.levanll.inventory.i18n.I18n.lang == cn.levanll.inventory.i18n.Lang.ZH) {
+        "${year}年${month}月"
+    } else {
+        java.text.SimpleDateFormat("MMM yyyy", java.util.Locale.ENGLISH)
+            .format(java.util.Date(startMillis()))
+    }
 
     override fun compareTo(other: YearMonth): Int =
         if (year != other.year) year - other.year else month - other.month

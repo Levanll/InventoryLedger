@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.levanll.inventory.i18n.I18n
 import cn.levanll.inventory.domain.InboundResult
 import kotlinx.coroutines.launch
 
@@ -109,8 +110,11 @@ fun MainScreen(vm: MainViewModel) {
                     vm.resetInbound()
                     scope.launch {
                         val res = snackbar.showSnackbar(
-                            message = "已入库，数量 ${fmtQty(r.quantityAfter)}",
-                            actionLabel = "撤销",
+                            message = I18n.s(
+                                "已入库，数量 ${fmtQty(r.quantityAfter)}",
+                                "Added, now ${fmtQty(r.quantityAfter)}"
+                            ),
+                            actionLabel = I18n.s("撤销", "Undo"),
                             withDismissAction = true,
                             duration = androidx.compose.material3.SnackbarDuration.Short
                         )
@@ -130,7 +134,7 @@ fun MainScreen(vm: MainViewModel) {
 
 @Composable
 private fun BottomTabBar(current: Int, onSelect: (Int) -> Unit) {
-    val labels = listOf("库存", "统计")
+    val labels = listOf(I18n.s("库存", "Inventory"), I18n.s("统计", "Stats"))
     Column(
         modifier = Modifier
             .fillMaxWidth()

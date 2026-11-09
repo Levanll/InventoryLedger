@@ -1,5 +1,7 @@
 package cn.levanll.inventory.ui
 
+import cn.levanll.inventory.i18n.I18n
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
@@ -92,7 +94,7 @@ fun ScanScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission = granted
-        if (!granted) lastError = "未获得相机权限，无法扫码"
+        if (!granted) lastError = I18n.s("未获得相机权限，无法扫码", "未获得相机权限，无法Scan")
     }
 
     LaunchedEffect(Unit) {
@@ -108,10 +110,10 @@ fun ScanScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("需要相机权限才能扫码", color = Color.White, fontSize = 15.sp)
+                Text(I18n.s("需要相机权限才能扫码", "Camera permission is required to scan"), color = Color.White, fontSize = 15.sp)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "重新授权",
+                    I18n.s("重新授权", "Grant again"),
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 15.sp,
                     modifier = Modifier
@@ -144,9 +146,9 @@ fun ScanScreen(
                 modifier = Modifier.size(48.dp).clickable { onClose() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.ArrowBack, "返回", tint = Color.White)
+                Icon(Icons.Default.ArrowBack, I18n.s("返回", "Back"), tint = Color.White)
             }
-            Text("扫条码", color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
+            Text(I18n.s("扫条码", "Scan barcode"), color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
         }
 
         // 底部提示
@@ -159,7 +161,7 @@ fun ScanScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                lastError ?: "将商品条码放进取景框，保持 10–20cm 距离",
+                lastError ?: I18n.s("将商品条码放进取景框，保持 10–20cm 距离", "Place the barcode in the frame, 10-20cm away"),
                 color = if (lastError != null) Color(0xFFFF6B54) else Color.White,
                 fontSize = 13.sp
             )
@@ -242,7 +244,7 @@ private fun CameraScanner(
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "camera start failed", e)
-                onError("相机启动失败：${e.message}")
+                onError(I18n.s("相机启动失败：${e.message}", "Camera failed: ${e.message}"))
             }
         }, ContextCompat.getMainExecutor(ctx))
 

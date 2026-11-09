@@ -43,6 +43,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.UnitNames
+import cn.levanll.inventory.i18n.Lang
 import cn.levanll.inventory.domain.DetailRow
 import cn.levanll.inventory.domain.MonthItemRow
 import cn.levanll.inventory.domain.YearMonth
@@ -92,14 +95,23 @@ fun StatsScreen(vm: MainViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "统计",
+                I18n.s("统计", "Stats"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "分类管理",
+                if (I18n.lang == Lang.ZH) "EN" else "中文",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable { I18n.toggle() }
+                    .padding(8.dp)
+            )
+            Text(
+                I18n.s("分类管理", "Category management"),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
@@ -121,10 +133,10 @@ fun StatsScreen(vm: MainViewModel) {
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            StatsTabItem("月度库存量", s.tab == StatsTab.INVENTORY, Modifier.weight(1f)) {
+            StatsTabItem(I18n.s("月度库存量", "Monthly stock"), s.tab == StatsTab.INVENTORY, Modifier.weight(1f)) {
                 vm.setStatsTab(StatsTab.INVENTORY)
             }
-            StatsTabItem("月度消耗", s.tab == StatsTab.CONSUMPTION, Modifier.weight(1f)) {
+            StatsTabItem(I18n.s("月度消耗", "Monthly usage"), s.tab == StatsTab.CONSUMPTION, Modifier.weight(1f)) {
                 vm.setStatsTab(StatsTab.CONSUMPTION)
             }
         }
@@ -137,7 +149,7 @@ fun StatsScreen(vm: MainViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.KeyboardArrowLeft, "上月",
+                Icons.Default.KeyboardArrowLeft, I18n.s("上月", "Previous month"),
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .size(36.dp)
@@ -156,7 +168,7 @@ fun StatsScreen(vm: MainViewModel) {
             )
             val canNext = s.month.next() <= YearMonth.now()
             Icon(
-                Icons.Default.KeyboardArrowRight, "下月",
+                Icons.Default.KeyboardArrowRight, I18n.s("下月", "Next month"),
                 tint = if (canNext) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -191,14 +203,14 @@ fun StatsScreen(vm: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            if (s.tab == StatsTab.INVENTORY) "本月还没有出入库记录"
-                            else "本月还没有消耗记录",
+                            if (s.tab == StatsTab.INVENTORY) I18n.s("本月还没有出入库记录", "No stock movements this month")
+                            else I18n.s("本月还没有消耗记录", "No usage this month"),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "在库存页用 ＋/− 调整数量，或入库后就会出现在这里",
+                            I18n.s("在库存页用 ＋/− 调整数量，或入库后就会出现在这里", "Adjust quantities with +/- on the Inventory tab"),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -261,20 +273,20 @@ private fun OverviewCard(s: StatsUiState, onOpenAll: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             if (s.tab == StatsTab.INVENTORY) {
-                StatCell("${fmtQty(s.overview.inQty)}", "入库合计", MaterialTheme.colorScheme.primary)
-                StatCell("${fmtQty(s.overview.outQty)}", "出库合计", MaterialTheme.colorScheme.error)
-                StatCell("${s.overview.activeItems}", "涉及品种", MaterialTheme.colorScheme.onSurface)
+                StatCell("${fmtQty(s.overview.inQty)}", I18n.s("入库合计", "Total in"), MaterialTheme.colorScheme.primary)
+                StatCell("${fmtQty(s.overview.outQty)}", I18n.s("出库合计", "Total out"), MaterialTheme.colorScheme.error)
+                StatCell("${s.overview.activeItems}", I18n.s("涉及品种", "Item types"), MaterialTheme.colorScheme.onSurface)
             } else {
-                StatCell("${fmtQty(s.overview.outQty)}", "消耗合计", MaterialTheme.colorScheme.error)
+                StatCell("${fmtQty(s.overview.outQty)}", I18n.s("消耗合计", "Total used"), MaterialTheme.colorScheme.error)
                 StatCell(
                     s.momPercent?.let { p ->
                         if (p >= 0) "↑${fmtQty(p)}%" else "↓${fmtQty(-p)}%"
                     } ?: "—",
-                    "较上月",
+                    I18n.s("较上月", "vs last month"),
                     if ((s.momPercent ?: 0.0) > 0) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.primary
                 )
-                StatCell("${s.overview.activeItems}", "涉及品种", MaterialTheme.colorScheme.onSurface)
+                StatCell("${s.overview.activeItems}", I18n.s("涉及品种", "Item types"), MaterialTheme.colorScheme.onSurface)
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -286,7 +298,10 @@ private fun OverviewCard(s: StatsUiState, onOpenAll: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "${s.month.label()}全部流水（${s.overview.inCount + s.overview.outCount} 条）",
+                I18n.s(
+                    "${s.month.label()}全部流水（${s.overview.inCount + s.overview.outCount} 条）",
+                    "All records in ${s.month.label()} (${s.overview.inCount + s.overview.outCount})"
+                ),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
@@ -329,13 +344,16 @@ private fun MonthRow(r: MonthItemRow, tab: StatsTab, onClick: () -> Unit) {
             )
             if (tab == StatsTab.INVENTORY) {
                 Text(
-                    "入库 ${fmtQty(r.inQty)} · 出库 ${fmtQty(r.outQty)}",
+                    I18n.s(
+                        "入库 ${fmtQty(r.inQty)} · 出库 ${fmtQty(r.outQty)}",
+                        "In ${fmtQty(r.inQty)} · Out ${fmtQty(r.outQty)}"
+                    ),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Text(
-                    "${r.recordCount} 次出库",
+                    I18n.s("${r.recordCount} 次出库", "${r.recordCount} withdrawals"),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -343,14 +361,14 @@ private fun MonthRow(r: MonthItemRow, tab: StatsTab, onClick: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                if (tab == StatsTab.INVENTORY) "结存 ${fmtQty(r.endQty)}"
-                else "消耗 ${fmtQty(r.outQty)}",
+                if (tab == StatsTab.INVENTORY) I18n.s("结存 ${fmtQty(r.endQty)}", "Balance ${fmtQty(r.endQty)}")
+                else I18n.s("消耗 ${fmtQty(r.outQty)}", "Used ${fmtQty(r.outQty)}"),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (tab == StatsTab.CONSUMPTION) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.primary
             )
-            Text("${r.unit}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(UnitNames.of(r.unit), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
             "›",
@@ -370,10 +388,10 @@ private fun MonthPickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择月份", fontSize = 16.sp, fontWeight = FontWeight.Medium) },
+        title = { Text(I18n.s("选择月份", "Select month"), fontSize = 16.sp, fontWeight = FontWeight.Medium) },
         text = {
             if (months.isEmpty()) {
-                Text("暂无历史记录", fontSize = 13.sp)
+                Text(I18n.s("暂无历史记录", "No history yet"), fontSize = 13.sp)
             } else {
                 Column(
                     modifier = Modifier
@@ -453,7 +471,7 @@ private fun DetailScreen(
         if (rows.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "该月没有记录",
+                    I18n.s("该月没有记录", "No records for this month"),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -476,9 +494,9 @@ private fun DetailScreen(
 @Composable
 private fun DetailRowItem(d: DetailRow) {
     val typeText = when (d.type) {
-        "IN" -> "入库"
-        "OUT" -> "出库"
-        "ADJUST" -> "调整"
+        "IN" -> I18n.s("入库", "Add Stock")
+        "OUT" -> I18n.s("出库", "Remove")
+        "ADJUST" -> I18n.s("调整", "Adjust")
         else -> d.type
     }
     val tint = when (d.type) {
@@ -511,7 +529,7 @@ private fun DetailRowItem(d: DetailRow) {
                 )
                 if (reverted) {
                     Text(
-                        "  已撤销",
+                        I18n.s("  已撤销", "  Reverted"),
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -528,7 +546,7 @@ private fun DetailRowItem(d: DetailRow) {
         Column(horizontalAlignment = Alignment.End) {
             Text(typeText, fontSize = 11.sp, color = tint)
             Text(
-                (if (d.delta > 0) "+" else "") + fmtQty(d.delta) + " " + d.unit,
+                (if (d.delta > 0) "+" else "") + fmtQty(d.delta) + " " + UnitNames.of(d.unit),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (reverted) MaterialTheme.colorScheme.onSurfaceVariant else tint
@@ -537,5 +555,9 @@ private fun DetailRowItem(d: DetailRow) {
     }
 }
 
-private fun fmtDateTime(ms: Long): String =
-    SimpleDateFormat("M月d日 HH:mm", Locale.getDefault()).format(Date(ms))
+private fun fmtDateTime(ms: Long): String {
+    // 日期格式也要跟随语言：中文用「11月9日」，英文用「Nov 9」
+    val pattern = if (I18n.lang == Lang.ZH) "M月d日 HH:mm" else "MMM d, HH:mm"
+    val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
+    return SimpleDateFormat(pattern, locale).format(Date(ms))
+}

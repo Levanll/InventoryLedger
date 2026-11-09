@@ -25,8 +25,8 @@ android {
         applicationId = "cn.levanll.inventory"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -100,8 +100,9 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // 扫码：ZXing 纯 Java 实现，不依赖 GMS / ML Kit。
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    // 扫码：只依赖 ZXing core（纯 Java 实现），预览与解码由 CameraX 自建。
+    // 不引入 zxing-android-embedded —— 它自带一个 Activity 与旧版 Camera API，
+    // 与本项目的 Compose 全屏扫码页重复，且会额外引入 appcompat 依赖。
     implementation("com.google.zxing:core:3.5.3")
     // CameraX 自建预览 + 解码
     val cameraxVersion = "1.3.4"
