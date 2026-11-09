@@ -26,11 +26,13 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.1.0**（versionCode 2） |
-| Release | GitHub 上 `v1.1.0` + `v1.0.0` 两个，都有 APK |
+| 版本 | **v1.2.0**（versionCode 3） |
+| Release | GitHub 上 `v1.2.0` / `v1.1.0` / `v1.0.0` 三个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.60 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
-| 最近提交 | `04c1cdf v1.1.0：中英双语 + 一批缺陷修复` |
+| 最近提交 | `defaa10` 修复悬停放大被裁剪，放大改为 1.5 倍 |
+| 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs` 目录 |
+| 站点语言 | `/` 中文，`/en/` 英文 |
 
 ### 已验证可用（真机实测）
 
@@ -43,6 +45,8 @@
 - 月度统计与明细下钻
 - 中英切换 + 语言持久化（重启后保持）
 - 从 v1.0.0 覆盖升级，数据完整保留
+- **两级分类折叠**：一级与二级均可独立折叠，商品行跟随二级缩进
+- **滚动指示条**：可拖动、按下变粗、能拖到底
 
 在 **HUAWEI HBN-AL80 / HarmonyOS 4.2（Android 12 底座，无 GMS）** 上验证过扫码能读出 `6972046811374`。**这条是关键**：证明不依赖 Google 服务。
 
@@ -51,6 +55,7 @@
 - **扫码功能在荣耀 Android 17 上未实测**（只验证了页面能打开，没在真机前扫过条码）。下一步若要动扫码代码，先在两台设备都测一遍
 - 分类名英文映射覆盖 80 个预置分类，**用户自建分类不翻译**（有意为之，见「设计决策」）
 - 条码查询对国产 69 码覆盖约 60–70%
+- 站点未在移动端真机验证（仅桌面 Chrome 1280 / 2560 宽）
 
 ---
 
@@ -304,18 +309,74 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 |---|---|
 | `README.md` | 中文主 README，含界面预览 |
 | `README_EN.md` | 英文 README，结构与中文对称 |
-| `CHANGELOG.md` | 按版本记录，1.1.0 在最上 |
+| `CHANGELOG.md` | 按版本记录，1.2.0 在最上 |
 | `SECURITY.md` | 漏洞报告渠道 |
+| `HANDOFF.md` | 本文件 |
 | `docs/设计方案.md` | 数据模型、事务纪律、分类机制、i18n、迁移链 |
-| `docs/页面规格.md` | 线框、控件规格、状态矩阵、语言切换 |
+| `docs/页面规格.md` | 线框、控件规格、状态矩阵、语言切换、折叠与滚动条 |
+| `docs/index.html` | **产品站点首页（中文）**，Pages 从 `/docs` 发布 |
+| `docs/en/index.html` | 产品站点英文页 |
+| `docs/style.css` | 站点样式（深色，配色取自应用主色） |
 | `docs/images/zh/*.png` | 中文截图 8 张 |
 | `docs/images/en/*.png` | 英文截图 8 张 |
+| `docs/images/hero-banner-{zh,en}.png` | README 与站点共用的首图 |
 
 **文档必须与代码一致。** 曾发现 README 写"4 张核心表"实际 6 张、"7 张表实体"实际 6 张、引用不存在的图片、声称"零额外依赖"却引入了从未使用的 `zxing-android-embedded`。改代码后顺手核对文档。
 
 ---
 
-## 十、发布流程
+## 十、产品站点（GitHub Pages）
+
+站点源是 `main` 分支的 `/docs` 目录，纯静态 HTML，**不经过 Jekyll 构建**。
+
+| 路径 | 说明 |
+|---|---|
+| https://levanll.github.io/InventoryLedger/ | 中文首页 |
+| https://levanll.github.io/InventoryLedger/en/ | 英文首页 |
+
+`LanPulse` 是另一个独立站点（`https://levanll.github.io/LanPulse/`），两者互不影响。
+
+### 本地预览
+
+```powershell
+# 必须用独立进程，PowerShell 的 Start-Job 会随命令结束而终止
+Start-Process -FilePath "D:\python\python.exe" `
+  -ArgumentList "-m","http.server","18765","--bind","127.0.0.1","--directory","<项目根>\docs" `
+  -WindowStyle Hidden
+
+# 停止（按命令行匹配，不要按 PID 记，因为每次不同）
+Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
+  Where-Object { $_.CommandLine -match '18765' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+### 截图轮播的关键决策（改之前先读）
+
+截图区是横向缓慢滑动的轮播，**不是九宫格**。手机截图竖长，网格会把每张压小又把页面拉长。
+
+**容器绝不能设 `overflow: hidden`。** 这是踩过的坑：
+
+- 最初用 `overflow: hidden` 横向裁切，再靠纵向内边距留放大余量
+- 结果余量只够 1.08 倍，改到 1.5 倍立刻被纵向裁掉一截
+- CSS 规定一个方向 `hidden` 时另一个方向不能 `visible`，靠内边距不可能覆盖任意倍数
+
+现做法：`.marquee` 不设任何 `overflow`，横向溢出交给 `html { overflow-x: hidden }`。
+**代价是两侧不能做渐隐**（`mask-image` 要求容器形成裁切上下文）。用户已确认接受这个取舍。
+
+悬停放大用 `transform: scale(1.5)`，不用改宽高——改宽高触发 reflow，整个轨道重算，明显卡顿。
+
+### 截图的白底问题
+
+App 截图是纯白（`#FFF`），整站深色，白图直接铺满卡片会像贴上去的一块亮矩形。**不改截图**，用画框解决：
+
+- 卡片底色比页面还深一档（`--panel-deep: #0a1019`）
+- 图片四周 6px 内边距，白图不再顶到卡片边缘
+- 图片自身圆角 6px + 内阴影，压住边缘的「硬」
+- 上下各一条 8px 渐变（顶部 0.22、底部 0.30）软化硬切
+
+---
+
+## 十一、发布流程
 
 ```powershell
 # 1. 改 app/build.gradle.kts 的 versionCode / versionName
@@ -331,6 +392,29 @@ git push https://x-access-token:<TOKEN>@github.com/Levanll/InventoryLedger.git H
 # 7. 创建 Release 并上传 APK（用 GitHub API）
 ```
 
+### Release 描述必须是中英对照
+
+格式对齐 LanPulse（`scripts/update_releases.py` 里有可复用的实现）：
+
+```
+## 本次更新          ← 中文段开头
+（一段话概述）
+
+### 新增 / 改进 / 修复 / 下载
+
+---
+
+<!-- English version below / 以下为英文版 -->
+
+## What's new        ← 英文段开头
+（对应的英文概述）
+
+### Added / Improvements / Fixes / Downloads
+```
+
+**两段章节必须完全对称**，每段自带下载表与安装提示，不共享。
+三个版本的 Release 现在都是这个结构，改动时保持。
+
 ### 创建 Release 时防乱码
 
 PowerShell 把对象转 JSON 字符串时会破坏中文（变 `?`）。**必须走字节**：
@@ -341,15 +425,73 @@ $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
 Invoke-WebRequest -Body $bytes -ContentType "application/json; charset=utf-8"
 ```
 
+更稳的做法是用 Python 的 `json.dumps(ensure_ascii=False).encode("utf-8")`，
+见 `scripts/update_releases.py`。
+
 创建后必须验证：`$rel.body -match '\?\?\?'` 为 false。
 
 ### token
 
 从 `D:\Documents\deepseek-harness\default-workspace\lanpulse\.gh_token` 读取。**只读，不改该目录任何内容。** 只在推送命令的 URL 里临时使用，**不要写入 git 配置或任何文件**。
 
+这个文件曾被删除过一次导致推送失败。缺失时向用户要新 token，不要试图从别处找凭证。
+
 ---
 
-## 十一、设计决策（不要轻易推翻）
+## 十二、库存列表：折叠与滚动指示条（v1.2.0）
+
+这两个功能都在 `InventoryScreen.kt`，样式组件在 `Widgets.kt`。
+
+### 两级折叠
+
+数据结构上，`InventoryUiState.collapsedRoots: Set<Long>` 存的是**已折叠的 id**，不是已展开的。
+这样默认全部展开符合直觉，新出现的分类也默认展开。
+
+`toggleGroup(id)` 负责加减集合，一级与二级共用同一个集合——id 全局唯一，不需要分开存。
+
+列表渲染是两层 `groupBy`：
+
+```kotlin
+state.items.groupBy { it.catL1 ?: "" }
+    .mapValues { (_, rows) -> rows.groupBy { it.catL2 ?: "" } }
+```
+
+`items` 已按分类树排好序，`groupBy` 保持插入顺序，所以嵌套两层即得到正确的两级分组。
+
+**关键点：折叠用的是 `catL1Id` / `catL2Id`，不是分类名。**
+不同一级下可能存在同名二级（如「服装/配饰」与「日用家居/配饰」），用名字当 key 会串组。
+这两个 id 由 `ItemWithCategory` 投影从 SQL 带出（`c1.id AS catL1Id, c2.id AS catL2Id`）。
+
+### 滚动指示条
+
+组件是 `Widgets.kt` 的 `ScrollIndicator`，接 `LazyListState`。几条实测得出的设计：
+
+1. **滑块只在 draw 阶段算**（`drawBehind`）。最初在组合阶段读 `listState.layoutInfo`，
+   每滚动一帧都触发重组，这是卡顿主因。
+2. **拖动用 `rememberDraggableState` + Channel**，回调里只做整数运算并 `trySend`。
+   最初每次拖动事件都 `scope.launch` 一个协程，高频拖动时协程堆积，表现为明显延迟。
+   Channel 用 `CONFLATED`，只保留最新目标。
+3. **拖动起点做快照**（`thumbStartPx`、`accumPx`）。若边拖边读 `firstVisibleItemIndex`，
+   会与自身滚动形成正反馈而抖动。
+4. **位置换算用滑块行程**（`usablePx`），不是条目索引。最初的写法拿 `baseIndex` 累加，
+   量纲错配，永远到不了底部。
+5. **上下留白必须相等**（各 10dp）。底部曾误用列表的 96dp 内容留白
+   （那个留白是给最后一项能滚到 TabBar 上方用的），导致滑块悬在半空。
+
+### 分类 chips 曾经完全不显示
+
+`CategoryDao.listRootStats()` 原来的 JOIN 是错的：
+
+```sql
+-- 错误：商品的 category_id 指向末级分类（T恤），永远不等于一级分类（服装）的 id
+FROM category c JOIN item i ON i.category_id = c.id WHERE c.depth = 1
+```
+
+改成递归 CTE 把每个商品沿 `parent_id` 向上回溯到所属一级分类再聚合。
+修复前查询恒返回 0 行，修复后正确返回 4 个一级分类、21 个商品。
+
+---
+## 十三、设计决策（不要轻易推翻）
 
 | 决策 | 理由 |
 |---|---|
@@ -361,12 +503,18 @@ Invoke-WebRequest -Body $bytes -ContentType "application/json; charset=utf-8"
 | 归零不自动删商品 | 误删不可逆，且历史流水要能引用 |
 | 三级上限 | 不加限制分类树会无限膨胀 |
 | 条码改名不锁死 | 弹出三选项让用户决定条码归属，而不是禁止改名 |
+| 折叠用「折叠集合」而非「展开集合」 | 默认全部展开符合直觉，新分类也默认展开 |
+| 折叠支持两级 | 只有一级折叠时，二级分类多的分组（如「服装」下 4 个二级）仍然很长 |
+| 二级头加主色竖条 | 原本对比度只有一级一半，长列表里被当成普通分隔线而忽略 |
+| 商品行跟随二级缩进 | 不缩进会让商品看起来属于一级分类而非二级 |
+| 轮播容器不设 overflow | 见「十、产品站点」，靠内边距留余量无法覆盖任意放大倍数 |
+| 站点截图不改图 | 白底是 App 本身的浅色模式，改图会失真；用画框适配更诚实 |
 
 **这些都是用户明确拍板或经过实测验证的，改动前先确认。**
 
 ---
 
-## 十二、下一步可能的工作
+## 十四、下一步可能的工作
 
 来自 README 的 Roadmap，优先级未定：
 
@@ -379,13 +527,16 @@ Invoke-WebRequest -Body $bytes -ContentType "application/json; charset=utf-8"
 ### 技术债 / 可改进处
 
 - `InboundScreen.kt` 862 行，是最大的单文件，可拆分
-- `MainViewModel.kt` 842 行，职责偏多
+- `MainViewModel.kt` 861 行，职责偏多
 - 扫码功能尚未在荣耀设备实测
-- `test-artifacts/` 151.8 MB，是测试中间产物，已在 gitignore；可清理但不影响功能
+- 站点未做移动端真机验证，窄屏下轮播与表格的换行未确认
+- `test-artifacts/` 约 150 MB，是测试中间产物，已在 gitignore；可清理但不影响功能
+- `docs/设计方案.md` 与 `docs/页面规格.md` 尚未补 1.2.0 的折叠与滚动条设计细节
+  （HANDOFF 第十二节有实现说明，但设计文档还是空的）
 
 ---
 
-## 十三、事故记录（教训）
+## 十五、事故记录（教训）
 
 ### 源码毁灭事故
 
@@ -407,19 +558,39 @@ Move-Item $oldDir $newDir
 - adb 传输二进制会损坏，必须 base64 编码后 push，再 `base64 -d`
 - `adb shell screencap` 重定向到本地文件会损坏 PNG，必须先存到设备再 `adb pull`
 - 坐标点击不可靠（布局会变），用 `scripts/uihelp.py` 按文字定位
+- `Start-Job` 起的 HTTP 服务器会随 PowerShell 命令结束而终止，要用 `Start-Process` 起独立进程
+- 查端口占用用 `Get-CimInstance Win32_Process` 匹配 `CommandLine`，`Get-NetTCPConnection` 不一定能拿到
+- 写 PNG 时 `IHDR` 的颜色类型必须与每行字节匹配：RGB 用类型 2（3 字节/像素），RGBA 用类型 6（4 字节/像素），不匹配会生成打不开的文件
+- PowerShell 读取 PNG 的字节偏移容易算错（IHDR 实际从第 16 字节开始），验证图片尺寸优先用 Python 解析
+
+### 两次判断错误（不是环境问题，是我自己的问题）
+
+**1. 误判 LanPulse 的 Release 没有英文**
+
+只看了 `body` 前 400 字符就下结论说"LanPulse 的 Release 全是中文"。
+实际它每个 Release 都是中英对照，英文段在 2000 字符之后，用 `## What's new` 开头。
+
+**教训：判断一个文件/文档的结构，必须读完全文或至少扫一遍所有标题行，不能用开头片段代表整体。**
+
+**2. 把缓存当成渲染缺陷**
+
+浏览器加载 `/` 与 `/en/` 时命中了旧缓存，导致中文页显示英文内容。
+在没有排除缓存的情况下，我一度认为是文件被写错了。
+
+**教训：本地静态站点验证时，URL 加 `?v=N` 破缓存，或先确认 `document.documentElement.lang` 与预期一致，再判断内容对错。**
 
 ---
 
-## 十四、给下一个会话的第一件事
+## 十六、给下一个会话的第一件事
 
 ```powershell
 cd "D:\Documents\deepseek-harness\default-workspace\inventory-android"
-git log --oneline -3          # 确认在 04c1cdf 附近
+git log --oneline -3          # 确认在 defaa10 附近
 git status                    # 确认工作区干净
 Get-ChildItem app\src\main\java\cn\levanll\inventory -Recurse -Filter *.kt | Measure-Object
 # 应该是 25 个文件
 ```
 
-然后读 `docs/设计方案.md`，再动手。
+然后读 `docs/设计方案.md` 和本文件的第十二节（折叠与滚动条），再动手。
 
 **用户偏好**：中文交流、直奔结论、不写客套话、给证据不给承诺、遇到阻塞说清「卡在哪 + 排除了什么 + 需要什么决策」。
