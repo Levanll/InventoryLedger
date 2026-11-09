@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>库存盘点 Inventory Ledger — 轻量本地库存管理</title>
+<meta name="description" content="Android 上的轻量本地库存管理：三级分类、保质期追踪、扫码识别、中英双语。全本地运行，零账号、零云同步。">
+<meta property="og:title" content="库存盘点 Inventory Ledger">
+<meta property="og:description" content="轻量本地库存管理 · 三级分类 · 保质期追踪 · 扫码识别 · 中英双语">
+<meta property="og:image" content="images/hero-banner-zh.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="images/app-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <span class="brand-mark">IL</span>
+      <span>Inventory Ledger</span>
+    </a>
+    <nav class="site-nav">
+      <a href="#features" class="hide-sm">功能</a>
+      <a href="#screens" class="hide-sm">界面</a>
+      <a href="#install">下载</a>
+      <a href="https://github.com/Levanll/InventoryLedger">GitHub</a>
+      <a class="lang-switch" href="en/">EN</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-badge">v1.2.0 · Android 7.0+ · 2.6 MB</div>
+    <h1>知道自己有什么，<br>也知道<em>什么该先用掉</em></h1>
+    <p class="lead">
+      扫码或手输入库，在主列表直接加减数量，保质期商品自动按临期程度排序。
+      三级分类让「T恤」和「精华」各有归属，进应用先提醒已过期的清单。
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/Levanll/InventoryLedger/releases/latest">
+        下载 APK
+        <span class="btn-sub">InventoryLedger-1.2.0.apk</span>
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/Levanll/InventoryLedger">
+        查看源码
+        <span class="btn-sub">MIT License</span>
+      </a>
+    </div>
+    <p class="hero-sub">全本地运行 · 无账号 · 无云同步 · 不联网也能用</p>
+    <img class="hero-img" src="images/hero-banner-zh.png" alt="Inventory Ledger 概览">
+  </div>
+</section>
+
+<section id="features" class="section">
+  <div class="wrap">
+    <h2>三点不同，其余都是常识</h2>
+    <p class="section-sub">
+      大多数库存 App 要么太轻（备忘录），要么太重（专业 WMS）。
+      这个项目只解决「个人和小店真正会遇到的三个问题」。
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3><span class="card-ico">1</span> 三级分类，且分组优先</h3>
+        <p>
+          服装 → 上装 → T恤，美妆个护 → 护肤 → 精华。同分类的商品永远挨在一起，
+          不会被保质期排序打散。这一条听起来简单，但把「分类」放在排序第一键
+          还是第二键，决定了用户找东西是快还是慢。
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="card-ico">2</span> 保质期可选，组内按紧急度</h3>
+        <p>
+          默认关闭，需要时打开，填生产日期和保质期天数，到期日自动算。
+          列表内同分类的商品聚在一起，组内保质期商品按剩余天数升序，
+          已过期的排在组内最前。进应用先弹窗列出全部过期商品。
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="card-ico">3</span> 完全离线，数据在本机</h3>
+        <p>
+          Room 本地数据库，没有账号、没有云同步、没有埋点。
+          联网只用于「扫码查商品信息」，失败或断网时除这一项外所有功能照常。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>几条写进代码的约束</h2>
+    <p class="section-sub">这些不是宣传语，是改代码时不许破坏的边界。</p>
+    <ul class="checks">
+      <li><b>所有写操作走事务</b>：入库、加减、撤销、分类变更全部包在 <code>withTransaction()</code> 里，任一失败整体回滚。</li>
+      <li><b>流水只增不删</b>：撤销不是删除或修改历史行，而是插入一条反向补偿记录，再把原记录指向它。历史数值永不修改。</li>
+      <li><b>到期时间不落库</b>：只存生产日期和保质期天数，到期日由 SQL 现算，改保质期不会出现两处不一致。</li>
+      <li><b>条码只作建议</b>：第三方商品库数据可能错、可能过时，查到后作为建议卡片展示，用户点「采用」才写入表单。</li>
+      <li><b>本地优先于联网</b>：用户自己填过的条码信息（本地自学习库）永远比第三方数据可靠，查询时先查本地。</li>
+      <li><b>不依赖 Google 服务</b>：扫码用 ZXing 纯 Java 解码 + CameraX 自建预览，HarmonyOS 等无 GMS 设备同样可用。</li>
+    </ul>
+  </div>
+</section>
+
+<section id="screens" class="section">
+  <div class="wrap">
+    <h2>界面</h2>
+    <p class="section-sub">浅色模式实拍，已裁去系统状态栏。</p>
+    <div class="marquee">
+      <div class="marquee-track">
+        <figure class="shot">
+          <img src="images/zh/list.png" alt="库存列表 · 按分类分组，组内临期优先" loading="lazy">
+          <figcaption>库存列表 · 按分类分组，组内临期优先</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/list-groups.png" alt="分类分组 · T恤 → 衬衫 → 乳制品" loading="lazy">
+          <figcaption>分类分组 · T恤 → 衬衫 → 乳制品</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/expired.png" alt="打开即提醒已过期商品" loading="lazy">
+          <figcaption>打开即提醒已过期商品</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/picker.png" alt="三级分类选择器 · 缩进表达层级" loading="lazy">
+          <figcaption>三级分类选择器 · 缩进表达层级</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/expiry.png" alt="保质期 · 实时计算到期日" loading="lazy">
+          <figcaption>保质期 · 实时计算到期日</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/stats.png" alt="月度库存量与消耗" loading="lazy">
+          <figcaption>月度库存量与消耗</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/inbound.png" alt="入库 · 扫码入口与基础字段" loading="lazy">
+          <figcaption>入库 · 扫码入口与基础字段</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/category.png" alt="分类管理 · 可增删改" loading="lazy">
+          <figcaption>分类管理 · 可增删改</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/list.png" alt="副本 库存列表 · 按分类分组，组内临期优先" loading="lazy">
+          <figcaption>库存列表 · 按分类分组，组内临期优先</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/list-groups.png" alt="副本 分类分组 · T恤 → 衬衫 → 乳制品" loading="lazy">
+          <figcaption>分类分组 · T恤 → 衬衫 → 乳制品</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/expired.png" alt="副本 打开即提醒已过期商品" loading="lazy">
+          <figcaption>打开即提醒已过期商品</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/picker.png" alt="副本 三级分类选择器 · 缩进表达层级" loading="lazy">
+          <figcaption>三级分类选择器 · 缩进表达层级</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/expiry.png" alt="副本 保质期 · 实时计算到期日" loading="lazy">
+          <figcaption>保质期 · 实时计算到期日</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/stats.png" alt="副本 月度库存量与消耗" loading="lazy">
+          <figcaption>月度库存量与消耗</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/inbound.png" alt="副本 入库 · 扫码入口与基础字段" loading="lazy">
+          <figcaption>入库 · 扫码入口与基础字段</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/zh/category.png" alt="副本 分类管理 · 可增删改" loading="lazy">
+          <figcaption>分类管理 · 可增删改</figcaption>
+        </figure>
+      </div>
+    </div>
+    <p class="marquee-hint">悬停可暂停，鼠标滚轮或手指可横向移动</p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>和别的方案比</h2>
+    <div class="grid-2">
+      <div>
+        <table class="spec-table">
+          <tr><th>备忘录</th><td>能记，改要重写；做不到分类到第三层</td></tr>
+          <tr><th>专业库存软件</th><td>要先建 SKU、录供应商；个人用不上那么重</td></tr>
+          <tr><th>本项目</th><td>列表直接 <code>−/+</code>；80 个预置分类可增删改</td></tr>
+        </table>
+      </div>
+      <div>
+        <table class="spec-table">
+          <tr><th>系统</th><td>Android 7.0 (API 24) 及以上</td></tr>
+          <tr><th>存储</th><td>约 10 MB</td></tr>
+          <tr><th>权限</th><td>相机（仅扫码）、网络（仅条码查询）</td></tr>
+          <tr><th>联网</th><td>可选。断网后除条码查询外全部可用</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="section">
+  <div class="wrap">
+    <h2>下载与安装</h2>
+    <p class="section-sub">
+      从 GitHub Releases 下载 APK，在手机上允许「未知来源」后安装。
+      这是侧载 APK 的正常流程，不是应用有问题。
+    </p>
+    <div class="grid-2">
+      <div>
+        <table class="spec-table">
+          <tr><th>版本</th><td>1.2.0 (versionCode 3)</td></tr>
+          <tr><th>大小</th><td>2.60 MB</td></tr>
+          <tr><th>最低系统</th><td>Android 7.0 (API 24)</td></tr>
+          <tr><th>签名</th><td>RSA 2048，v1 + v2 + v3</td></tr>
+        </table>
+        <p style="margin-top:22px">
+          <a class="btn btn-primary" href="https://github.com/Levanll/InventoryLedger/releases/latest">
+            前往 Releases 下载
+          </a>
+        </p>
+      </div>
+      <div>
+        <pre><code># 用 adb 安装
+adb install -r InventoryLedger-1.2.0.apk
+
+# 从旧版升级
+# 签名相同，直接覆盖安装，数据保留</code></pre>
+        <p style="color:var(--text-faint);font-size:0.88rem">
+          覆盖升级已验证：从 v1.0.0 直接装 v1.2.0，库存与流水完整保留。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>已知限制</h2>
+    <p class="section-sub">这些是真实边界，不是「即将支持」。</p>
+    <ul class="checks">
+      <li><b>条码覆盖有限</b>：公开库对国产商品覆盖约 60-70%，查不到时手填即可，填过一次后本地自学习库会记住。</li>
+      <li><b>单仓库</b>：设计目标是个人 / 家庭 / 小店，多个存放地点需自行拆分条目。</li>
+      <li><b>无系统通知</b>：过期提醒只在打开应用时出现，不推送到通知栏。</li>
+      <li><b>无云同步、无导出</b>：换机需重新录入。</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© 2026 Levanll · MIT License</span>
+    <span>
+      <a href="https://github.com/Levanll/InventoryLedger">源码</a> ·
+      <a href="https://github.com/Levanll/InventoryLedger/releases">发布</a> ·
+      <a href="https://github.com/Levanll/InventoryLedger/issues">反馈</a> ·
+      <a href="en/">English</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>

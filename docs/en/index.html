@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory Ledger — Lightweight offline inventory for Android</title>
+<meta name="description" content="Lightweight offline inventory for Android: three-level categories, expiry tracking, barcode scanning, Chinese/English UI. Fully local — no account, no cloud sync.">
+<meta property="og:title" content="Inventory Ledger">
+<meta property="og:description" content="Lightweight offline inventory for Android · 3-level categories · Expiry tracking · Barcode scan · Bilingual UI">
+<meta property="og:image" content="../images/hero-banner-en.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../images/app-icon.png">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="brand-mark">IL</span>
+      <span>Inventory Ledger</span>
+    </a>
+    <nav class="site-nav">
+      <a href="#features" class="hide-sm">Features</a>
+      <a href="#screens" class="hide-sm">Screens</a>
+      <a href="#install">Download</a>
+      <a href="https://github.com/Levanll/InventoryLedger">GitHub</a>
+      <a class="lang-switch" href="../">中文</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-badge">v1.2.0 · Android 7.0+ · 2.6 MB</div>
+    <h1>Know what you have,<br>and <em>what to use first</em></h1>
+    <p class="lead">
+      Scan a barcode or type it in, adjust quantities right in the list, and expiring
+      items sort themselves by urgency. Three category levels give "T-shirts" and
+      "Serum" their proper home, and an expired-item summary greets you on launch.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/Levanll/InventoryLedger/releases/latest">
+        Download APK
+        <span class="btn-sub">InventoryLedger-1.2.0.apk</span>
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/Levanll/InventoryLedger">
+        View source
+        <span class="btn-sub">MIT License</span>
+      </a>
+    </div>
+    <p class="hero-sub">Fully local · No account · No cloud sync · Works offline</p>
+    <img class="hero-img" src="../images/hero-banner-en.png" alt="Inventory Ledger overview">
+  </div>
+</section>
+
+<section id="features" class="section">
+  <div class="wrap">
+    <h2>Three things differ, the rest is common sense</h2>
+    <p class="section-sub">
+      Most inventory apps are either too light (a notes app) or too heavy (a professional WMS).
+      This project solves the three problems an individual or small shop actually runs into.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3><span class="card-ico">1</span> Three levels, grouped first</h3>
+        <p>
+          Clothing → Tops → T-Shirts, Beauty &amp; Care → Skincare → Serum. Items in the same
+          category always stay together and are never split apart by expiry sorting. It sounds
+          simple, but whether the category is the first or second sort key decides whether finding
+          something is fast or slow.
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="card-ico">2</span> Optional expiry, sorted within group</h3>
+        <p>
+          Off by default. Turn it on, enter a production date and shelf life, and the expiry date is
+          computed. Within a group, items with expiry sort by remaining days, expired first. On
+          launch, every expired item is listed.
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="card-ico">3</span> Fully offline, data on device</h3>
+        <p>
+          A local Room database. No account, no cloud sync, no analytics. The network is used only
+          for barcode product lookup; if it fails or you are offline, everything else still works.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>Constraints written into the code</h2>
+    <p class="section-sub">These are not marketing lines — they are boundaries not to be broken when changing the code.</p>
+    <ul class="checks">
+      <li><b>Every write goes through a transaction</b>: inbound, adjust, undo and category changes are all wrapped in <code>withTransaction()</code>; any failure rolls back completely.</li>
+      <li><b>Records are append-only</b>: undo does not delete or modify history — it inserts a reversing entry and points the original at it.</li>
+      <li><b>Expiry is never stored</b>: only the production date and shelf life are kept; the expiry date is computed by SQL.</li>
+      <li><b>Barcode data is a suggestion only</b>: third-party data can be wrong or stale, so it appears as a card and is written only when you tap "Use".</li>
+      <li><b>Local beats network</b>: anything you entered yourself (the self-learning cache) is more reliable than any third-party source, so it is queried first.</li>
+      <li><b>No Google services</b>: ZXing for pure-Java decoding plus a CameraX preview, so devices without GMS (such as HarmonyOS) work the same.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="screens" class="section">
+  <div class="wrap">
+    <h2>Screens</h2>
+    <p class="section-sub">Light mode, system status bar cropped.</p>
+    <div class="marquee">
+      <div class="marquee-track">
+        <figure class="shot">
+          <img src="../images/en/list.png" alt="Inventory list · grouped, expiry first within group" loading="lazy">
+          <figcaption>Inventory list · grouped, expiry first within group</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/list-groups.png" alt="Grouping · T-Shirts → Shirts → Dairy" loading="lazy">
+          <figcaption>Grouping · T-Shirts → Shirts → Dairy</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/expired.png" alt="Expired items on launch" loading="lazy">
+          <figcaption>Expired items on launch</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/picker.png" alt="Three-level picker · indentation shows depth" loading="lazy">
+          <figcaption>Three-level picker · indentation shows depth</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/expiry.png" alt="Expiry · computed live" loading="lazy">
+          <figcaption>Expiry · computed live</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/stats.png" alt="Monthly stock and usage" loading="lazy">
+          <figcaption>Monthly stock and usage</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/inbound.png" alt="Add stock · scan entry and fields" loading="lazy">
+          <figcaption>Add stock · scan entry and fields</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/category.png" alt="Category management · full CRUD" loading="lazy">
+          <figcaption>Category management · full CRUD</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/list.png" alt="dup Inventory list · grouped, expiry first within group" loading="lazy">
+          <figcaption>Inventory list · grouped, expiry first within group</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/list-groups.png" alt="dup Grouping · T-Shirts → Shirts → Dairy" loading="lazy">
+          <figcaption>Grouping · T-Shirts → Shirts → Dairy</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/expired.png" alt="dup Expired items on launch" loading="lazy">
+          <figcaption>Expired items on launch</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/picker.png" alt="dup Three-level picker · indentation shows depth" loading="lazy">
+          <figcaption>Three-level picker · indentation shows depth</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/expiry.png" alt="dup Expiry · computed live" loading="lazy">
+          <figcaption>Expiry · computed live</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/stats.png" alt="dup Monthly stock and usage" loading="lazy">
+          <figcaption>Monthly stock and usage</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/inbound.png" alt="dup Add stock · scan entry and fields" loading="lazy">
+          <figcaption>Add stock · scan entry and fields</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../images/en/category.png" alt="dup Category management · full CRUD" loading="lazy">
+          <figcaption>Category management · full CRUD</figcaption>
+        </figure>
+      </div>
+    </div>
+    <p class="marquee-hint">Hover to pause; scroll or drag horizontally to browse</p>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>Compared with alternatives</h2>
+    <div class="grid-2">
+      <div>
+        <table class="spec-table">
+          <tr><th>Notes app</th><td>Can record, but editing means rewriting; no third category level</td></tr>
+          <tr><th>Professional WMS</th><td>Requires SKUs and suppliers first; far too heavy for personal use</td></tr>
+          <tr><th>This project</th><td>Tap <code>−/+</code> in the list; 80 preset categories, fully editable</td></tr>
+        </table>
+      </div>
+      <div>
+        <table class="spec-table">
+          <tr><th>OS</th><td>Android 7.0 (API 24) and above</td></tr>
+          <tr><th>Storage</th><td>About 10 MB</td></tr>
+          <tr><th>Permissions</th><td>Camera (scanning), network (lookup)</td></tr>
+          <tr><th>Network</th><td>Optional. Everything except lookup works offline</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="section">
+  <div class="wrap">
+    <h2>Download and install</h2>
+    <p class="section-sub">
+      Get the APK from GitHub Releases and allow "unknown sources" on your phone.
+      This is the normal side-loading flow, not a sign that something is wrong.
+    </p>
+    <div class="grid-2">
+      <div>
+        <table class="spec-table">
+          <tr><th>Version</th><td>1.2.0 (versionCode 3)</td></tr>
+          <tr><th>Size</th><td>2.60 MB</td></tr>
+          <tr><th>Min SDK</th><td>Android 7.0 (API 24)</td></tr>
+          <tr><th>Signature</th><td>RSA 2048, v1 + v2 + v3</td></tr>
+        </table>
+        <p style="margin-top:22px">
+          <a class="btn btn-primary" href="https://github.com/Levanll/InventoryLedger/releases/latest">
+            Go to Releases
+          </a>
+        </p>
+      </div>
+      <div>
+        <pre><code># Install with adb
+adb install -r InventoryLedger-1.2.0.apk
+
+# Upgrading from an older build
+# Same signing key, in-place install, data preserved</code></pre>
+        <p style="color:var(--text-faint);font-size:0.88rem">
+          Verified: installing v1.2.0 over v1.0.0 keeps inventory and records intact.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <h2>Known limitations</h2>
+    <p class="section-sub">Real boundaries, not "coming soon".</p>
+    <ul class="checks">
+      <li><b>Limited barcode coverage</b>: public databases cover roughly 60-70% outside the US and EU. Type it in when lookup fails — the local self-learning cache remembers it after the first time.</li>
+      <li><b>Single location</b>: designed for personal, household or small-shop use; split items yourself if you keep stock in several places.</li>
+      <li><b>No system notifications</b>: the expiry reminder appears when you open the app.</li>
+      <li><b>No cloud sync, no export</b>: switching phones means re-entering data.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© 2026 Levanll · MIT License</span>
+    <span>
+      <a href="https://github.com/Levanll/InventoryLedger">Source</a> ·
+      <a href="https://github.com/Levanll/InventoryLedger/releases">Releases</a> ·
+      <a href="https://github.com/Levanll/InventoryLedger/issues">Issues</a> ·
+      <a href="../">中文</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
