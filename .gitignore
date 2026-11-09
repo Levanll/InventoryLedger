@@ -7,21 +7,22 @@ local.properties
 keystore/
 *.jks
 *.keystore
+*.properties.bak
 
 # IDE
 .idea/
 *.iml
 
+# JVM 堆转储
+*.hprof
+
 # 测试产物与分析中间物（体积大、可重现）
 test-artifacts/
 _archive-*/
 
-# 解压出的 APK 内容
-hivision-x/
+# APK 与数据库文件
 *.apk
 *.b64
 *.db
 *.db-wal
 *.db-shm
-# JVM 堆转储
-*.hprof
