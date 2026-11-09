@@ -339,41 +339,31 @@ a:hover { text-decoration: underline; }
 */
 
 /*
-   overflow: hidden 是横向裁切的必需条件，但 CSS 规定一个方向设为
-   hidden 时另一个方向不能是 visible。所以放大后的卡片会被纵向裁掉。
-   解决办法：给容器留足纵向内边距，放大只在这个余量内发生。
-   负外边距抵消多出的空白，不让页面显得更松散。
+   容器不做任何裁剪。
 
-   两侧轻微淡化：边缘保留三成不透明度而不是全透明。
-   全透明会把首尾图切掉一半、像布局出错；留一点透明度，
-   图片仍是完整的，只是边缘柔和。
-   只做水平渐变，纵向不受影响，所以悬停放大的卡片不会被裁掉。
+   之前用 overflow: hidden 横向裁切，副作用是悬停放大后的卡片被纵向裁掉一截
+   （CSS 规定一个方向 hidden 时另一个方向不能是 visible）。
+   靠加内边距留余量的做法只是把可放大的范围从 1.08 撑到某个值，换个屏宽就又不够。
+
+   现在改为：.marquee 完全不设 overflow，横向溢出交给 html 的 overflow-x: hidden。
+   这样卡片的纵向放大不受任何裁剪，想放大多少都不会被切。
+   代价是两侧不能做渐隐——mask-image 要求容器自身形成裁切上下文。
 */
 .marquee {
     position: relative;
-    overflow: hidden;
-    padding: 34px 0;
-    margin: -34px 0;
-    -webkit-mask-image: linear-gradient(
-        to right,
-        rgba(0, 0, 0, 0.30) 0,
-        #000 56px,
-        #000 calc(100% - 56px),
-        rgba(0, 0, 0, 0.30) 100%
-    );
-    mask-image: linear-gradient(
-        to right,
-        rgba(0, 0, 0, 0.30) 0,
-        #000 56px,
-        #000 calc(100% - 56px),
-        rgba(0, 0, 0, 0.30) 100%
-    );
+}
+
+/* 横向溢出统一在根元素截断，避免出现横向滚动条 */
+html {
+    overflow-x: hidden;
 }
 
 .marquee-track {
     display: flex;
     gap: 20px;
     width: max-content;
+    /* 不裁剪，让 scale 可以自由超出 */
+    overflow: visible;
     /* 强制独立合成层，避免与页面的重绘互相干扰 */
     transform: translateZ(0);
     will-change: transform;
@@ -435,7 +425,7 @@ a:hover { text-decoration: underline; }
 .shot:hover {
     border-color: var(--accent);
     background: #0b1119;
-    transform: scale(1.08);
+    transform: scale(1.5);
     box-shadow:
         0 24px 52px rgba(0, 0, 0, 0.6),
         0 0 0 1px rgba(76, 168, 255, 0.3),
@@ -506,12 +496,23 @@ a:hover { text-decoration: underline; }
     );
 }
 
+/*
+   figcaption 不再固定高度。
+   之前高度随内容浮动，长标题（如「库存列表 · 按分类分组，组内临期优先」）
+   会撑成两行，导致同一排卡片高度不一、底边参差。
+   现在统一最小高度并居中，两行也能放下，一排卡片底边齐平。
+*/
 .shot figcaption {
-    padding: 9px 7px;
+    padding: 10px 7px 11px;
     font-size: 0.8rem;
     color: var(--text-faint);
     border-top: none;
-    line-height: 1.5;
+    line-height: 1.55;
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 .marquee-hint {
