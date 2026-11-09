@@ -71,13 +71,33 @@ interface CategoryDao {
     suspend fun getDisplayNameRaw(id: Long): DisplayNamePair?
 
     /** 动态分类条：只统计在库商品，且只取一级分类（总览用） */
+    /**
+     * 动态分类条：只统计在库商品，且只取一级分类（总览用）。
+     *
+     * 不能写成 `JOIN item ON i.category_id = c.id WHERE c.depth = 1`：
+     * 商品的 category_id 指向的是**最末级**分类（如「T恤」），
+     * 永远不等于一级分类（「服装」）的 id，那样查出来永远是空。
+     *
+     * 正确做法是把每个商品沿 parent_id 向上回溯到自己所属的一级分类，
+     * 再按一级分类聚合。用递归 CTE 完成回溯。
+     */
     @Query(
         """
+        WITH RECURSIVE up(item_id, cat_id, parent_id, depth) AS (
+            SELECT i.id, c.id, c.parent_id, c.depth
+            FROM item i JOIN category c ON c.id = i.category_id
+            WHERE i.quantity > 0 AND i.deleted_at IS NULL
+            UNION ALL
+            SELECT up.item_id, p.id, p.parent_id, p.depth
+            FROM up JOIN category p ON p.id = up.parent_id
+            WHERE up.depth > 1
+        )
         SELECT c.id AS id, c.name AS name, c.parent_id AS parentId, c.depth AS depth,
-               COUNT(i.id) AS count
-        FROM category c JOIN item i ON i.category_id = c.id
-        WHERE i.quantity > 0 AND i.deleted_at IS NULL AND c.depth = 1
-        GROUP BY c.id HAVING COUNT(i.id) > 0
+               COUNT(DISTINCT up.item_id) AS count
+        FROM up JOIN category c ON c.id = up.cat_id
+        WHERE up.depth = 1
+        GROUP BY c.id
+        HAVING COUNT(DISTINCT up.item_id) > 0
         ORDER BY c.sort ASC, c.id ASC
         """
     )

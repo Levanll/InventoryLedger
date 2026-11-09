@@ -12,7 +12,7 @@
 
 **中文** ｜ [English](README_EN.md) ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
 
-<img src="docs/images/zh/list.png" width="320" alt="库存列表" />
+![Inventory Ledger](docs/images/hero-banner-zh.png)
 
 ---
 
@@ -45,7 +45,7 @@
 
 ### 1. 下载安装
 
-到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.1.0.apk`。
+到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.2.0.apk`。
 
 > 安装时系统会提示「未知来源」，需要在设置里允许来自此来源的应用。这是侧载 APK 的正常流程。
 
@@ -97,16 +97,6 @@
 |---|---|
 | ![统计](docs/images/zh/stats.png) | ![分类](docs/images/zh/category.png) |
 | *可按月切换，点行进明细* | *右侧 ＋ 建子类，✕ 删除，限三级* |
-
-**English UI**（同一套界面，右上角 `EN` / `中文` 一键切换，选择会记住）：
-
-| Inventory list | Expired on launch |
-|---|---|
-| ![list](docs/images/en/list.png) | ![expired](docs/images/en/expired.png) |
-
-| Category picker | Monthly stats |
-|---|---|
-| ![picker](docs/images/en/picker.png) | ![stats](docs/images/en/stats.png) |
 
 ---
 

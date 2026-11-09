@@ -45,7 +45,14 @@ data class InventoryUiState(
     val loading: Boolean = true,
     /** 启动时的已过期清单，非空则弹窗 */
     val expiredOnLaunch: List<ItemWithCategory> = emptyList(),
-    val expiredDialogShown: Boolean = false
+    val expiredDialogShown: Boolean = false,
+    /**
+     * 已折叠的一级分类 id。
+     *
+     * 用「折叠集合」而不是「展开集合」：默认全部展开是符合直觉的初始状态，
+     * 新出现的分类也默认展开；只有用户主动折叠的才进集合。
+     */
+    val collapsedRoots: Set<Long> = emptySet()
 )
 
 /** 条码改名冲突：让用户决定这个条码从此关联谁 */
@@ -224,6 +231,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setCategory(id: Long?) {
         _inventory.value = _inventory.value.copy(selectedCat = id)
         refreshInventory()
+    }
+
+    /** 折叠 / 展开某个一级分类 */
+    fun toggleGroup(rootId: Long) {
+        val cur = _inventory.value.collapsedRoots
+        _inventory.value = _inventory.value.copy(
+            collapsedRoots = if (rootId in cur) cur - rootId else cur + rootId
+        )
+    }
+
+    /** 全部折叠 / 全部展开 */
+    fun setAllCollapsed(collapse: Boolean) {
+        val roots = _inventory.value.cats.map { it.id }.toSet()
+        _inventory.value = _inventory.value.copy(
+            collapsedRoots = if (collapse) roots else emptySet()
+        )
     }
 
     fun dismissLowStockBar() {

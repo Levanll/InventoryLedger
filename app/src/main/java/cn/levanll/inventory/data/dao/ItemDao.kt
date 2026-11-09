@@ -33,6 +33,17 @@ data class ItemWithCategory(
     val catL1: String?,
     val catL2: String?,
     val catL3: String?,
+    /**
+     * 一 / 二级分类的 id。
+     *
+     * 折叠分组需要按 id 而不是名字来索引：不同一级下可能存在同名二级
+     * （例如「服装/配饰」和「日用家居/配饰」），用名字当 key 会把两组混在一起。
+     *
+     * 商品只有三级分类时，catL2Id 仍然有值（它是该三级的父级），
+     * 因此两级折叠都能定位。
+     */
+    val catL1Id: Long?,
+    val catL2Id: Long?,
     // 保质期
     val expiryEnabled: Boolean,
     val productionDate: Long?,
@@ -83,6 +94,7 @@ interface ItemDao {
                i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
                i.created_at AS createdAt, i.updated_at AS updatedAt,
                c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
                i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
                i.shelf_life_days AS shelfLifeDays,
                CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
@@ -122,6 +134,7 @@ interface ItemDao {
                i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
                i.created_at AS createdAt, i.updated_at AS updatedAt,
                c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
                i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
                i.shelf_life_days AS shelfLifeDays,
                CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
@@ -170,6 +183,7 @@ interface ItemDao {
                i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
                i.created_at AS createdAt, i.updated_at AS updatedAt,
                c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
                i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
                i.shelf_life_days AS shelfLifeDays,
                CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
@@ -240,6 +254,7 @@ interface ItemDao {
                i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
                i.created_at AS createdAt, i.updated_at AS updatedAt,
                c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
                i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
                i.shelf_life_days AS shelfLifeDays,
                CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
@@ -273,6 +288,7 @@ interface ItemDao {
                i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
                i.created_at AS createdAt, i.updated_at AS updatedAt,
                c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
                i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
                i.shelf_life_days AS shelfLifeDays,
                CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL

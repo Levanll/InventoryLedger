@@ -26,3 +26,7 @@ _archive-*/
 *.db
 *.db-wal
 *.db-shm
+
+# Python 缓存
+__pycache__/
+*.pyc
