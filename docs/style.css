@@ -339,20 +339,44 @@ a:hover { text-decoration: underline; }
 */
 
 /*
-   不加两侧渐隐遮罩。
-   试过 mask-image 渐隐，但首尾图片会被切掉一半，看起来像布局出错，
-   反而不如让图片完整地滑出视口干净。
+   overflow: hidden 是横向裁切的必需条件，但 CSS 规定一个方向设为
+   hidden 时另一个方向不能是 visible。所以放大后的卡片会被纵向裁掉。
+   解决办法：给容器留足纵向内边距，放大只在这个余量内发生。
+   负外边距抵消多出的空白，不让页面显得更松散。
+
+   两侧轻微淡化：边缘保留三成不透明度而不是全透明。
+   全透明会把首尾图切掉一半、像布局出错；留一点透明度，
+   图片仍是完整的，只是边缘柔和。
+   只做水平渐变，纵向不受影响，所以悬停放大的卡片不会被裁掉。
 */
 .marquee {
     position: relative;
     overflow: hidden;
+    padding: 34px 0;
+    margin: -34px 0;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.30) 0,
+        #000 56px,
+        #000 calc(100% - 56px),
+        rgba(0, 0, 0, 0.30) 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.30) 0,
+        #000 56px,
+        #000 calc(100% - 56px),
+        rgba(0, 0, 0, 0.30) 100%
+    );
 }
 
 .marquee-track {
     display: flex;
     gap: 20px;
     width: max-content;
-    padding: 4px 0 12px;
+    /* 强制独立合成层，避免与页面的重绘互相干扰 */
+    transform: translateZ(0);
+    will-change: transform;
     animation: marquee-left 60s linear infinite;
 }
 
@@ -362,37 +386,131 @@ a:hover { text-decoration: underline; }
 }
 
 @keyframes marquee-left {
-    from { transform: translateX(0); }
+    from { transform: translate3d(0, 0, 0); }
     /* 轨道含两份内容，各占一半，位移一半即无缝衔接 */
-    to   { transform: translateX(-50%); }
+    to   { transform: translate3d(-50%, 0, 0); }
 }
 
+/*
+   截图适配深色页面。
+
+   问题：App 截图是纯白底（#FFFFFF），而整站是深色。白图直接铺满卡片时，
+   每个卡片就是一块刺眼的白矩形，和背景没有任何过渡，看起来像贴上去的。
+
+   不改截图本身，改用「画框」思路让白图归属于页面：
+   1. 卡片外层用比页面更深的底色（--panel-deep），比页面背景还沉一档，
+      白色截图嵌在里面形成明确的内外关系
+   2. 图片四周留 6px 内边距，白图不再顶到卡片边缘
+   3. 图片自身加圆角与内阴影，边缘有一点收拢，不显得生硬
+   4. 悬停时边框变主色、外发光，白色区域被光晕包住，反而成了视觉焦点
+
+   这样白底不是缺陷，而是「屏幕亮着」的自然表现。
+*/
 .shot {
     margin: 0;
     flex: 0 0 auto;
     width: 232px;
+    position: relative;
+    z-index: 1;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     overflow: hidden;
-    background: var(--panel);
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    background: var(--panel-deep);
+    padding: 6px 6px 0;
+    /*
+       用 transform 做放大而不是改宽高：
+       改宽高会触发布局重排（reflow），整个轨道都得重新计算，
+       鼠标划过时明显卡顿。transform 走合成层，只重绘不重排。
+       曲线用 ease-out 的近似值，起步快、收尾缓，观感更自然。
+    */
+    transform-origin: center bottom;
+    transition:
+        transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+        box-shadow 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+        border-color 0.24s ease,
+        background-color 0.34s ease;
+    will-change: transform;
 }
 
 .shot:hover {
-    border-color: var(--accent-dim);
-    transform: translateY(-3px);
+    border-color: var(--accent);
+    background: #0b1119;
+    transform: scale(1.08);
+    box-shadow:
+        0 24px 52px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(76, 168, 255, 0.3),
+        0 0 34px rgba(0, 125, 255, 0.16);
+    z-index: 3;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .shot,
+    .shot:hover {
+        transition: none;
+        transform: none;
+    }
+}
+
+/*
+   白色截图自身的处理：
+   - 圆角 6px，与画框的 10px 形成层次，不会两个圆角打架
+   - 一圈极淡的内阴影，压住白图边缘的「硬」，
+     深色背景上一块纯白如果边缘完全锐利会很刺眼
+*/
 .shot img {
     width: 100%;
     display: block;
+    border-radius: 6px;
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+        0 2px 10px rgba(0, 0, 0, 0.4);
+    background: #fff;
+}
+
+/*
+   图片上下边缘的柔化。
+   深色底上纯白图片的上下边界是硬切，视觉上会「跳」出来。
+   用两条极窄的渐变条压住边缘，白到深色的过渡就有了缓冲，
+   比直接改图片或加厚边框自然。
+
+   图上方 10px 由深转透明，图下方 12px 由透明转深。
+   用 pointer-events: none 保证不影响悬停与点击。
+*/
+.shot::before,
+.shot::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 8px;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 6px;
+}
+
+.shot::before {
+    top: 6px;
+    background: linear-gradient(
+        to bottom,
+        rgba(10, 16, 25, 0.22) 0,
+        rgba(10, 16, 25, 0) 100%
+    );
+}
+
+.shot::after {
+    bottom: 33px;
+    background: linear-gradient(
+        to top,
+        rgba(10, 16, 25, 0.30) 0,
+        rgba(10, 16, 25, 0) 100%
+    );
 }
 
 .shot figcaption {
-    padding: 9px 13px;
+    padding: 9px 7px;
     font-size: 0.8rem;
     color: var(--text-faint);
-    border-top: 1px solid var(--line);
+    border-top: none;
     line-height: 1.5;
 }
 
