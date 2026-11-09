@@ -12,7 +12,7 @@
 
 [中文](README.md) ｜ **English** ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
 
-<img src="docs/images/en/list.png" width="320" alt="Inventory list" />
+![Inventory Ledger](docs/images/hero-banner-en.png)
 
 ---
 
@@ -59,7 +59,7 @@ A notes app can't do categories. A professional WMS is far too heavy.
 
 ### 1. Download
 
-Get `InventoryLedger-1.1.0.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
+Get `InventoryLedger-1.2.0.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
 
 > Android will warn about installing from an unknown source. Allow it for your file manager or browser — this is the normal side-loading flow.
 
@@ -111,16 +111,6 @@ Adjust quantities with `−/+` on each row. Reaching zero asks whether to delete
 |---|---|
 | ![stats](docs/images/en/stats.png) | ![category](docs/images/en/category.png) |
 | *Switch months, tap a row for details* | *＋ adds a child, ✕ deletes, three levels max* |
-
-**中文界面**（同一套界面，右上角一键切换，选择会记住）：
-
-| 库存列表 | 已过期提醒 |
-|---|---|
-| ![list](docs/images/zh/list.png) | ![expired](docs/images/zh/expired.png) |
-
-| 分类选择器 | 月度统计 |
-|---|---|
-| ![picker](docs/images/zh/picker.png) | ![stats](docs/images/zh/stats.png) |
 
 ---
 

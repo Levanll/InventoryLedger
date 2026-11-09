@@ -48,6 +48,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.levanll.inventory.i18n.I18n
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import cn.levanll.inventory.i18n.UnitNames
 import cn.levanll.inventory.i18n.Lang
 import cn.levanll.inventory.i18n.CategoryNames
@@ -155,7 +161,7 @@ fun InventoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item { Chip(I18n.s("全部", "All"), state.selectedCat == null) { vm.setCategory(null) } }
-                    items(state.cats, key = { "${it.id}_${it.count}" }) { c: CategoryStat ->
+                    items(state.cats, key = { it.id }) { c: CategoryStat ->
                         Chip(CategoryNames.of(c.name), state.selectedCat == c.id) { vm.setCategory(c.id) }
                     }
                 }
@@ -212,27 +218,100 @@ fun InventoryScreen(
                 state.loading -> LoadingSkeleton()
                 state.items.isEmpty() -> EmptyState(I18n.s("还没有商品", "No items yet"), I18n.s("立即入库", "Add now")) { onOpenInbound(null) }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
-                    ) {
-                        items(state.items, key = { "${it.id}_${it.updatedAt}" }) { item ->
-                            ItemRowWithStepper(
-                                item = item,
-                                onOpen = { onOpenInbound(item.id) },
-                                onMinus = {
-                                    val step = Constants.stepOfUnit(item.unit)
-                                    vm.adjustQty(item.id, -step) { zero -> pendingDelete = zero }
-                                },
-                                onPlus = {
-                                    val step = Constants.stepOfUnit(item.unit)
-                                    vm.adjustQty(item.id, step)
+                    val listState = rememberLazyListState()
+
+                    // items 已按分类树排好序（一级→二级→三级），
+                    // groupBy 保持插入顺序，嵌套两层即得到正确的两级分组。
+                    val groups = remember(state.items) {
+                        state.items.groupBy { it.catL1 ?: "" }
+                            .mapValues { (_, rows) -> rows.groupBy { it.catL2 ?: "" } }
+                    }
+
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 16.dp, end = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
+                        ) {
+                            groups.forEach { (rootName, subGroups) ->
+                                val allRows = subGroups.values.flatten()
+                                val rootId = allRows.firstOrNull()?.catL1Id
+                                val rootCollapsed = rootId != null && rootId in state.collapsedRoots
+
+                                if (rootName.isNotEmpty()) {
+                                    item(key = "h1_$rootName") {
+                                        GroupHeader(
+                                            title = CategoryNames.of(rootName),
+                                            count = allRows.size,
+                                            collapsed = rootCollapsed,
+                                            level = 1,
+                                            onToggle = { rootId?.let { vm.toggleGroup(it) } }
+                                        )
+                                    }
                                 }
-                            )
+
+                                if (!rootCollapsed) {
+                                    subGroups.forEach { (subName, rows) ->
+                                        val subId = rows.firstOrNull()?.catL2Id
+                                        val subCollapsed =
+                                            subId != null && subId in state.collapsedRoots
+
+                                        if (subName.isNotEmpty()) {
+                                            item(key = "h2_${rootName}_$subName") {
+                                                GroupHeader(
+                                                    title = CategoryNames.of(subName),
+                                                    count = rows.size,
+                                                    collapsed = subCollapsed,
+                                                    level = 2,
+                                                    onToggle = { subId?.let { vm.toggleGroup(it) } }
+                                                )
+                                            }
+                                        }
+
+                                        if (!subCollapsed) {
+                                            items(rows, key = { it.id }) { item ->
+                                                // 商品行跟着二级分类缩进。
+                                                // 不缩进会让商品卡片与一级标题左对齐，
+                                                // 看起来像是「属于整个数码配件」而不是「属于线材」，
+                                                // 层级关系就断了。
+                                                Box(
+                                                    modifier = Modifier.padding(start = 14.dp)
+                                                ) {
+                                                    ItemRowWithStepper(
+                                                        item = item,
+                                                        onOpen = { onOpenInbound(item.id) },
+                                                        onMinus = {
+                                                            val step = Constants.stepOfUnit(item.unit)
+                                                            vm.adjustQty(item.id, -step) { zero -> pendingDelete = zero }
+                                                        },
+                                                        onPlus = {
+                                                            val step = Constants.stepOfUnit(item.unit)
+                                                            vm.adjustQty(item.id, step)
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
+
+                        // 滚动指示条：贴在列表右缘，不占布局宽度。
+                        //
+                        // 上沿对齐「最近」栏下方，下沿对齐「库存 / 统计」TabBar 上沿，
+                        // 且上下留同样的 10dp —— 不等距会让滑块看起来偏下、像是没到底。
+                        // 注意不能用列表的 contentPadding（96dp）：那个留白属于内容区，
+                        // 是让最后一项能滚到 TabBar 上方，与滑块代表的「可视区进度」无关。
+                        ScrollIndicator(
+                            listState = listState,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 10.dp, bottom = 10.dp, end = 4.dp)
+                        )
                     }
                 }
             }
@@ -562,6 +641,97 @@ private fun LoadingSkeleton() {
                     .height(84.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surface)
+            )
+        }
+    }
+}
+
+/**
+ * 分类分组头，支持两级。
+ *
+ * 整行可点（不只是箭头），因为用户的意图是「收起这一类」，
+ * 强迫他们精确点中 24dp 的箭头是无谓的门槛。
+ *
+ * 两级用视觉区分而不是加缩进：一级用实底、二级用浅底 + 左侧色条。
+ * 缩进会让二级标题看起来像商品行，反而混淆层级。
+ *
+ * 二级原本是 alpha 0.25 底色配灰字，实测对比度只有一级的一半，
+ * 在长列表里会被当成普通分隔线而完全被忽略（用户反馈「线材不显眼」）。
+ * 现在二级加一条主色竖条作为锚点，文字提到 onSurface，
+ * 底色提到 0.35 —— 仍是「次级」，但不会再被跳过。
+ */
+@Composable
+private fun GroupHeader(
+    title: String,
+    count: Int,
+    collapsed: Boolean,
+    level: Int,
+    onToggle: () -> Unit
+) {
+    val isL1 = level == 1
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (isL1) 44.dp else 40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (isL1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            )
+            .clickable { onToggle() }
+            .padding(start = if (isL1) 12.dp else 16.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 二级：左侧主色竖条，作为「这是一层分类」的视觉锚点
+        if (!isL1) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+
+        // 箭头：折叠时指向右，展开时指向下。旋转而非换图标，过渡更连贯
+        val rotation by animateFloatAsState(
+            targetValue = if (collapsed) -90f else 0f,
+            animationSpec = tween(180),
+            label = "groupArrow"
+        )
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = if (collapsed) {
+                I18n.s("展开 $title", "Expand $title")
+            } else {
+                I18n.s("折叠 $title", "Collapse $title")
+            },
+            tint = if (isL1) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+            modifier = Modifier
+                .size(if (isL1) 20.dp else 18.dp)
+                .rotate(rotation)
+        )
+
+        Spacer(Modifier.width(if (isL1) 6.dp else 5.dp))
+
+        Text(
+            I18n.s("$title · $count 种", "$title · $count"),
+            fontSize = if (isL1) 13.sp else 12.sp,
+            fontWeight = if (isL1) FontWeight.Medium else FontWeight.Medium,
+            color = if (isL1) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+
+        if (collapsed) {
+            Text(
+                I18n.s("已折叠", "collapsed"),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
