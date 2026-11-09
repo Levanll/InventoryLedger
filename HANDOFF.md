@@ -328,11 +328,17 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 ## 十、产品站点（GitHub Pages）
 
 站点源是 `main` 分支的 `/docs` 目录，纯静态 HTML，**不经过 Jekyll 构建**。
+已于 2026-11-10 通过 API 启用（`POST /repos/{owner}/{repo}/pages`，body 为
+`{"source":{"branch":"main","path":"/docs"}}`），构建状态 `built`。
 
 | 路径 | 说明 |
 |---|---|
 | https://levanll.github.io/InventoryLedger/ | 中文首页 |
 | https://levanll.github.io/InventoryLedger/en/ | 英文首页 |
+
+**启用 Pages 的注意事项**：这个端点第一次尝试失败（返回 400），换用
+`Invoke-WebRequest -UseBasicParsing` 并把 body 显式转成 UTF-8 字节后成功。
+如果以后需要重建站点，用同样方式，不要用 `Invoke-RestMethod` 直接传对象。
 
 `LanPulse` 是另一个独立站点（`https://levanll.github.io/LanPulse/`），两者互不影响。
 

@@ -10,7 +10,7 @@
 [![APK](https://img.shields.io/badge/APK-2.60%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
 [![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%E6%96%87%20%7C%20English-00E5A0?style=flat-square)](#)
 
-**中文** ｜ [English](README_EN.md) ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
+**中文** ｜ [English](README_EN.md) ｜ **[官方网站](https://levanll.github.io/InventoryLedger/)** ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
 
 ![Inventory Ledger](docs/images/hero-banner-zh.png)
 
