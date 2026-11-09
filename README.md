@@ -7,11 +7,12 @@
 [![Compose](https://img.shields.io/badge/Compose-BOM%202024.06-4285F4?style=flat-square&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Room-2.6.1-3DDC84?style=flat-square)](https://developer.android.com/training/data-storage/room)
 [![minSdk](https://img.shields.io/badge/minSdk-24-3DDC84?style=flat-square&logo=android)](https://developer.android.com/about/versions/nougat)
-[![APK](https://img.shields.io/badge/APK-2.61%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
+[![APK](https://img.shields.io/badge/APK-2.60%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
+[![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%E6%96%87%20%7C%20English-00E5A0?style=flat-square)](#)
 
 **中文** ｜ [English](README_EN.md) ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
 
-![Inventory Ledger](docs/images/screenshot-list.png)
+<img src="docs/images/zh/list.png" width="320" alt="库存列表" />
 
 ---
 
@@ -35,6 +36,7 @@
 | ↔️ | **数量就地增减** | 列表每行右侧直接 `− 1 ＋`，不必进入详情页；减到 0 弹窗询问是否删除 | 最高频的动作是「用掉一个」和「补了几个」，多一次跳转就是多一次摩擦 |
 | ↩️ | **一切可撤销** | 流水只增不删；撤销写入反向补偿记录，历史行数值永不修改。5 秒内可一键撤销 | 改错了要能退回去，且要能查得到「谁在什么时候改了什么」 |
 | 📊 | **月度库存与消耗** | 按自然月聚合，可切换月份、下钻到单商品流水；消耗页带环比 | 「这个月到底用了多少」是复盘采购的唯一依据 |
+| 🌐 | **中英双语，随时切换** | 库存页与统计页右上角都有 `EN` / `中文` 按钮，点击即时生效，不用重启；选择会记住 | 界面文案、分类名、单位、日期格式全部跟随切换，不是只换标题 |
 | 📴 | **零账号零云同步** | 全部数据在本机 Room 数据库。联网仅用于条码查询，失败不影响任何功能 | 家庭与小店库存不需要上传到任何服务器 |
 
 ---
@@ -43,7 +45,7 @@
 
 ### 1. 下载安装
 
-到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.0.0.apk`。
+到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.1.0.apk`。
 
 > 安装时系统会提示「未知来源」，需要在设置里允许来自此来源的应用。这是侧载 APK 的正常流程。
 
@@ -74,30 +76,43 @@
 
 ## 界面预览
 
-| 库存列表 · 三级分类与保质期 | 已过期提醒 · 启动即弹窗 |
-|---|---|
-| ![列表](docs/images/screenshot-list.png) | ![过期](docs/images/screenshot-expired.png) |
-| *同分类商品聚在一起，临期饰品排在组内前面* | *带分类路径与过期天数* |
+> 全部截图为浅色模式、已裁去系统状态栏，中英文各一套。
 
-| 三级分类选择器 · 缩进表达层级 | 分类管理 · 可增删改 |
+| 库存列表 · 分类分组 + 组内临期优先 | 已过期提醒 · 打开即弹窗 |
 |---|---|
-| ![选择器](docs/images/screenshot-picker.png) | ![分类](docs/images/screenshot-category.png) |
-| *一级不缩进，二级缩 16dp，三级缩 32dp* | *右侧 ＋ 建子类，✕ 删除* |
+| ![列表](docs/images/zh/list.png) | ![过期](docs/images/zh/expired.png) |
+| *5 件 T恤聚在一起，组内「已过期 3 天」排最前* | *带三级分类路径与过期天数* |
 
-| 保质期设置 · 实时算到期 | 扫码 · 相机实时预览 |
+| 跨分类分组 · 分类优先于临期 | 三级分类选择器 · 缩进表达层级 |
 |---|---|
-| ![保质期](docs/images/screenshot-expiry.png) | ![扫码](docs/images/screenshot-scan.png) |
-| *快捷预设 7/30/90/180/365 天* | *ZXing 解码，不依赖 Google 服务* |
+| ![分组](docs/images/zh/list-groups.png) | ![选择器](docs/images/zh/picker.png) |
+| *T恤 → 衬衫 → 乳制品，同组内按剩余天数升序* | *一级不缩进，二级缩 16dp，三级缩 32dp* |
 
-| 空状态 |
-|---|
-| ![空](docs/images/screenshot-empty.png) |
+| 入库单 · 扫码入口与基础字段 | 保质期设置 · 实时算到期 |
+|---|---|
+| ![入库](docs/images/zh/inbound.png) | ![保质期](docs/images/zh/expiry.png) |
+| *名称自动识别分类，可手动改* | *快捷预设 7/30/90/180/365 天* |
+
+| 月度统计 · 库存量与消耗 | 分类管理 · 可增删改 |
+|---|---|
+| ![统计](docs/images/zh/stats.png) | ![分类](docs/images/zh/category.png) |
+| *可按月切换，点行进明细* | *右侧 ＋ 建子类，✕ 删除，限三级* |
+
+**English UI**（同一套界面，右上角 `EN` / `中文` 一键切换，选择会记住）：
+
+| Inventory list | Expired on launch |
+|---|---|
+| ![list](docs/images/en/list.png) | ![expired](docs/images/en/expired.png) |
+
+| Category picker | Monthly stats |
+|---|---|
+| ![picker](docs/images/en/picker.png) | ![stats](docs/images/en/stats.png) |
 
 ---
 
 ## 能力一览
 
-**80 个预置分类 · 83 条识别规则 · 4 张核心表 · 3 种流水类型**
+**80 个预置分类 · 83 条识别规则 · 6 张表 · 3 种流水类型**
 
 - **三级分类树**：递归 CTE 生成路径串排序（`002服装/001上装/001T恤`），字典序天然得到先序 DFS，避免 `ORDER BY sort` 导致层级错乱
 - **动态分类条**：只渲染 `quantity > 0` 且 `depth = 1` 的分类，由 SQL 统计驱动，不在界面写死
@@ -176,7 +191,7 @@
 InventoryLedger/
 ├── app/src/main/java/cn/levanll/inventory/
 │   ├── data/
-│   │   ├── entity/          7 张表实体
+│   │   ├── entity/          6 张表实体
 │   │   ├── dao/             ItemDao / CategoryDao / RecordDao / BarcodeDao
 │   │   └── db/              AppDatabase（4 个版本迁移）+ 三级分类种子
 │   ├── domain/
@@ -186,6 +201,10 @@ InventoryLedger/
 │   │   ├── CategoryService  分类增删改 + 商品迁移
 │   │   ├── StatsService     月度库存与消耗聚合
 │   │   └── BarcodeLookup    三级数据源查询 + 自学习
+│   ├── i18n/
+│   │   ├── I18n.kt          语言状态 + 持久化
+│   │   ├── CategoryNames.kt 分类名中英对照
+│   │   └── UnitNames.kt     单位中英对照
 │   └── ui/
 │       ├── MainViewModel    单一状态源（StateFlow）
 │       ├── InventoryScreen  列表 + 保质期徽标 + 过期弹窗
@@ -194,7 +213,8 @@ InventoryLedger/
 │       ├── CategoryManage   分类树维护
 │       ├── ScanScreen       CameraX + ZXing
 │       └── theme/Widgets    主题与通用组件
-├── docs/images/             界面截图
+├── docs/images/             界面截图（zh/ 与 en/ 各一套）
+├── scripts/                 图标生成器、截图辅助
 ├── keystore/                签名文件（.gitignore 排除）
 └── app/proguard-rules.pro   R8 混淆规则
 ```
@@ -208,6 +228,7 @@ InventoryLedger/
 | `ItemDao.search()` | 三级排序键：分类树 → 有保质期优先 → 剩余天数升序 |
 | `BarcodeLookupService` | 负缓存用 `NotFound` 哨兵（`ConcurrentHashMap` 不允许 null value） |
 | `ScanScreen.decodeBitmap()` | 用 `ImageProxy.toBitmap()` 而非手工解析 YUV 平面 |
+| `I18n.kt` | 语言用 Compose 状态承载并持久化，切换不重建 Activity |
 
 ---
 
@@ -220,7 +241,7 @@ InventoryLedger/
 | 数据库 | Room 2.6.1（SQLite） | 编译期校验 SQL，支持递归 CTE 与迁移 |
 | 扫码 | ZXing 3.5.3 + CameraX 1.3.4 | **不依赖 GMS / ML Kit**，HarmonyOS 等无 Google 服务的设备也能用 |
 | 构建 | AGP 8.5.2 + Gradle 8.9 + KSP | KSP 替代 KAPT，编译更快 |
-| 混淆 | R8（`isMinifyEnabled = true`） | APK 从 17.67 MB 降至 **2.61 MB** |
+| 混淆 | R8（`isMinifyEnabled = true`） | APK 从 17.67 MB 降至 **2.60 MB** |
 | 签名 | v1 + v2 + v3，RSA 2048 | 兼容 Android 7.0 到 14 |
 
 **运行时零额外依赖**：除 AndroidX 与 ZXing 外无第三方库。

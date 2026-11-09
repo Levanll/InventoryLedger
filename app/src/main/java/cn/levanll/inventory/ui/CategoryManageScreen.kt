@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.CategoryNames
 import cn.levanll.inventory.data.dao.CategoryPick
 
 /**
@@ -65,14 +67,14 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
                     .padding(horizontal = 10.dp)
             )
             Text(
-                "分类管理",
+                I18n.s("分类管理", "Category management"),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "＋ 一级",
+                I18n.s("＋ 一级", "+ Level 1"),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
@@ -82,7 +84,7 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
         }
 
         Text(
-            "点分类可重命名；右侧 ＋ 在其下新建子分类",
+            I18n.s("点分类可重命名；右侧 ＋ 在其下新建子分类", "Tap to rename; + adds a child"),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -111,9 +113,9 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
             title = {
                 Text(
                     when {
-                        st.editingId != null -> "重命名分类"
-                        st.parentPath.isEmpty() -> "新建一级分类"
-                        else -> "在「${st.parentPath}」下新建"
+                        st.editingId != null -> I18n.s("重命名分类", "Rename category")
+                        st.parentPath.isEmpty() -> I18n.s("新建一级分类", "New level-1 category")
+                        else -> I18n.s("在「${st.parentPath}」下新建", "New under ${st.parentPath}")
                     },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
@@ -125,7 +127,7 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
                         value = st.inputName,
                         onValueChange = { vm.setCategoryInput(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("分类名称", fontSize = 14.sp) },
+                        placeholder = { Text(I18n.s("分类名称", "Category name"), fontSize = 14.sp) },
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
                         isError = st.error != null
@@ -137,10 +139,10 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { vm.submitCategoryEdit() }) { Text("保存") }
+                TextButton(onClick = { vm.submitCategoryEdit() }) { Text(I18n.s("保存", "Save")) }
             },
             dismissButton = {
-                TextButton(onClick = { vm.closeCategoryEditor() }) { Text("取消") }
+                TextButton(onClick = { vm.closeCategoryEditor() }) { Text(I18n.s("取消", "Cancel")) }
             }
         )
     }
@@ -150,10 +152,10 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
     if (del != null) {
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("删除「${del.name}」？", fontSize = 16.sp, fontWeight = FontWeight.Medium) },
+            title = { Text(I18n.s("删除「${del.name}」？", "Delete ${del.name}?"), fontSize = 16.sp, fontWeight = FontWeight.Medium) },
             text = {
                 Text(
-                    "如果该分类下还有商品或子分类，删除会被拒绝，需先迁移。",
+                    I18n.s("如果该分类下还有商品或子分类，删除会被拒绝，需先迁移。", "Deletion is refused while items or children remain. Migrate first."),
                     fontSize = 13.sp
                 )
             },
@@ -161,10 +163,10 @@ fun CategoryManageScreen(vm: MainViewModel, onClose: () -> Unit) {
                 TextButton(onClick = {
                     vm.deleteCategory(del.id)
                     pendingDelete = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(I18n.s("删除", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("取消") }
+                TextButton(onClick = { pendingDelete = null }) { Text(I18n.s("取消", "Cancel")) }
             }
         )
     }
@@ -189,7 +191,7 @@ private fun CatRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            c.name,
+            CategoryNames.of(c.name),
             fontSize = if (c.depth == 1) 15.sp else 14.sp,
             fontWeight = if (c.depth == 1) FontWeight.Medium else FontWeight.Normal,
             color = when (c.depth) {

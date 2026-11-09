@@ -51,6 +51,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.UnitNames
+import cn.levanll.inventory.i18n.CategoryNames
 import cn.levanll.inventory.domain.Constants
 import cn.levanll.inventory.domain.InboundResult
 import cn.levanll.inventory.domain.startOfDay
@@ -104,13 +107,13 @@ fun InboundScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.ArrowBack, "返回",
+                        Icons.Default.ArrowBack, I18n.s("返回", "Back"),
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp)
                     )
                 }
                 Text(
-                    "入库",
+                    I18n.s("入库", "Add Stock"),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -128,7 +131,7 @@ fun InboundScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (s.saving) "保存中…" else "保存",
+                        if (s.saving) I18n.s("保存中…", "Saving…") else I18n.s("保存", "Save"),
                         fontSize = 15.sp,
                         color = if (valid) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -155,20 +158,20 @@ fun InboundScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.QrCodeScanner, "扫码",
+                        Icons.Default.QrCodeScanner, I18n.s("扫码", "Scan"),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "扫码入库",
+                            I18n.s("扫码入库", "Scan to add"),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (s.barcode != null) {
                             Text(
-                                "条码 ${s.barcode}",
+                                I18n.s("条码 ${s.barcode}", "Barcode ${s.barcode}"),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -195,7 +198,7 @@ fun InboundScreen(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            "正在查询商品信息…",
+                            I18n.s("正在查询商品信息…", "Looking up product…"),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -210,7 +213,7 @@ fun InboundScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            "查到商品信息",
+                            I18n.s("查到商品信息", "Product found"),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -222,14 +225,14 @@ fun InboundScreen(
                         )
                         if (sug.spec != null) {
                             Text(
-                                "规格 ${sug.spec}",
+                                I18n.s("规格 ${sug.spec}", "Spec ${sug.spec}"),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         if (sug.categoryHint != null) {
                             Text(
-                                "参考分类 ${sug.categoryHint}",
+                                I18n.s("参考分类 ${sug.categoryHint}", "Suggested ${CategoryNames.ofPath(sug.categoryHint ?: "")}"),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -244,7 +247,7 @@ fun InboundScreen(
                                     .clickable { vm.applyScanSuggestion() },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("采用", fontSize = 14.sp, color = Color.White)
+                                Text(I18n.s("采用", "Use"), fontSize = 14.sp, color = Color.White)
                             }
                             Box(
                                 modifier = Modifier
@@ -256,14 +259,14 @@ fun InboundScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "手动填写",
+                                    I18n.s("手动填写", "Enter manually"),
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
                         Text(
-                            "商品库数据可能不准确，采用后可继续修改",
+                            I18n.s("商品库数据可能不准确，采用后可继续修改", "Product data may be inaccurate; you can edit after using"),
                             fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -272,12 +275,12 @@ fun InboundScreen(
 
                 // 名称
                 Column {
-                    SectionLabel("名称", required = true)
+                    SectionLabel(I18n.s("名称", "Name"), required = true)
                     OutlinedTextField(
                         value = s.name,
                         onValueChange = { vm.inboundNameChanged(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("例如：牛奶", fontSize = 15.sp) },
+                        placeholder = { Text(I18n.s("例如：牛奶", "e.g. Milk"), fontSize = 15.sp) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         trailingIcon = {
@@ -317,7 +320,7 @@ fun InboundScreen(
                                         maxLines = 1, overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        item.categoryPath(),
+                                        CategoryNames.ofPath(item.categoryPath()),
                                         fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -325,7 +328,7 @@ fun InboundScreen(
                                     )
                                 }
                                 Text(
-                                    "已存 ${fmtQty(item.quantity)}",
+                                    I18n.s("已存 ${fmtQty(item.quantity)}", "In stock ${fmtQty(item.quantity)}"),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -344,13 +347,13 @@ fun InboundScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "追加到已有商品；改名会提示确认",
+                            I18n.s("追加到已有商品；改名会提示确认", "Appending to an existing item; renaming asks for confirmation"),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            "改为新建",
+                            I18n.s("改为新建", "Create new instead"),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium,
@@ -363,13 +366,13 @@ fun InboundScreen(
 
                 // 规格
                 Column {
-                    SectionLabel("规格")
+                    SectionLabel(I18n.s("规格", "Spec"))
                     OutlinedTextField(
                         value = s.spec,
                         onValueChange = { vm.inboundSpecChanged(it) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = s.existingItemId == null,
-                        placeholder = { Text("例如：全脂 250ml", fontSize = 15.sp) },
+                        placeholder = { Text(I18n.s("例如：全脂 250ml", "e.g. Whole 250ml"), fontSize = 15.sp) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -377,7 +380,7 @@ fun InboundScreen(
 
                 // 单位
                 Column {
-                    SectionLabel("单位")
+                    SectionLabel(I18n.s("单位", "Unit"))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -388,14 +391,14 @@ fun InboundScreen(
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(s.unit, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        Text(UnitNames.of(s.unit), fontSize = 15.sp, modifier = Modifier.weight(1f))
                         Text("▾", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 // 数量
                 Column {
-                    SectionLabel("数量", required = true)
+                    SectionLabel(I18n.s("数量", "Quantity"), required = true)
                     QtyStepper(
                         qty = s.qty,
                         unit = s.unit,
@@ -409,20 +412,20 @@ fun InboundScreen(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "分类", fontSize = 13.sp,
+                            I18n.s("分类", "Category"), fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
                         if (s.needConfirm && s.categoryId != null) {
-                            Text("请确认", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                            Text(I18n.s("请确认", "Please confirm"), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                         } else if (s.categoryId == null) {
                             Text(
-                                "未自动识别", fontSize = 12.sp,
+                                I18n.s("未自动识别", "Not detected"), fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
-                            "修改 ›", fontSize = 13.sp,
+                            I18n.s("修改 ›", "Change ›"), fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .clickable { showCatPicker = true }
@@ -438,7 +441,7 @@ fun InboundScreen(
                                 .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
                             Text(
-                                s.categoryPath.ifEmpty { "未分类" },
+                                s.categoryPath.ifEmpty { I18n.s("未分类", "Uncategorized") },
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -458,13 +461,13 @@ fun InboundScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "启用保质期",
+                                I18n.s("启用保质期", "Track expiry"),
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                if (s.expiryEnabled) "到期后会在列表中提醒"
-                                else "默认关闭，需要时打开",
+                                if (s.expiryEnabled) I18n.s("到期后会在列表中提醒", "Will alert in the list when expiring")
+                                else I18n.s("默认关闭，需要时打开", "Off by default, turn on when needed"),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -490,13 +493,13 @@ fun InboundScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "生产日期",
+                                    I18n.s("生产日期", "Production date"),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.width(72.dp)
                                 )
                                 Text(
-                                    s.productionDate?.let { fmtDate(it) } ?: "未设置",
+                                    s.productionDate?.let { fmtDate(it) } ?: I18n.s("未设置", "Not set"),
                                     fontSize = 14.sp,
                                     color = if (s.productionDate == null)
                                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -504,7 +507,7 @@ fun InboundScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                                 Icon(
-                                    Icons.Default.DateRange, "选择日期",
+                                    Icons.Default.DateRange, I18n.s("选择日期", "Select date"),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -520,7 +523,7 @@ fun InboundScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "保质期",
+                                    I18n.s("保质期", "Shelf life"),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.width(72.dp)
@@ -529,14 +532,14 @@ fun InboundScreen(
                                     value = s.shelfLifeDays?.toString() ?: "",
                                     onValueChange = { v -> vm.setShelfLifeDays(v.toIntOrNull()) },
                                     modifier = Modifier.weight(1f),
-                                    placeholder = { Text("天数", fontSize = 14.sp) },
+                                    placeholder = { Text(I18n.s("天数", "days"), fontSize = 14.sp) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "天",
+                                    I18n.s("天", "days"),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -553,7 +556,7 @@ fun InboundScreen(
                                             .padding(horizontal = 10.dp, vertical = 5.dp)
                                     ) {
                                         Text(
-                                            "$d 天",
+                                            I18n.s("$d 天", "$d d"),
                                             fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -567,8 +570,17 @@ fun InboundScreen(
                                 val expiry = prod + days.toLong() * 86400000L
                                 val left = ((expiry - startOfDay(System.currentTimeMillis())) / 86400000L).toInt()
                                 Text(
-                                    "预计 ${fmtDate(expiry)} 到期" +
-                                        if (left >= 0) "（还剩 $left 天）" else "（已过期 ${-left} 天）",
+                                    if (left >= 0) {
+                                        I18n.s(
+                                            "预计 ${fmtDate(expiry)} 到期（还剩 $left 天）",
+                                            "Expires ${fmtDate(expiry)} ($left days left)"
+                                        )
+                                    } else {
+                                        I18n.s(
+                                            "预计 ${fmtDate(expiry)} 到期（已过期 ${-left} 天）",
+                                            "Expires ${fmtDate(expiry)} (expired ${-left} days)"
+                                        )
+                                    },
                                     fontSize = 12.sp,
                                     color = if (left < 7) MaterialTheme.colorScheme.error
                                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -580,10 +592,10 @@ fun InboundScreen(
 
                 // 低库存阈值
                 Column {
-                    SectionLabel("低库存提醒（可选）")
+                    SectionLabel(I18n.s("低库存提醒（可选）", "Low stock alert (optional)"))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "低于", fontSize = 14.sp,
+                            I18n.s("低于", "Below"), fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(8.dp))
@@ -597,7 +609,7 @@ fun InboundScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            s.unit, fontSize = 14.sp,
+                            UnitNames.of(s.unit), fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -611,7 +623,7 @@ fun InboundScreen(
         if (showUnitPicker) {
             AlertDialog(
                 onDismissRequest = { showUnitPicker = false },
-                title = { Text("选择单位", fontSize = 16.sp) },
+                title = { Text(I18n.s("选择单位", "Select unit"), fontSize = 16.sp) },
                 text = {
                     Column {
                         Constants.UNITS.chunked(3).forEach { row ->
@@ -657,9 +669,9 @@ fun InboundScreen(
                 onDismissRequest = { showCatPicker = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("选择分类", fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Text(I18n.s("选择分类", "Select category"), fontSize = 16.sp, modifier = Modifier.weight(1f))
                         Text(
-                            "＋ 新建",
+                            I18n.s("＋ 新建", "+ New"),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium,
@@ -692,7 +704,7 @@ fun InboundScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    c.name,
+                                    CategoryNames.of(c.name),
                                     fontSize = if (c.depth == 1) 15.sp else 14.sp,
                                     fontWeight = if (c.depth == 1) FontWeight.Medium
                                     else FontWeight.Normal,
@@ -739,18 +751,18 @@ fun InboundScreen(
         if (conflict != null) {
             AlertDialog(
                 onDismissRequest = { vm.dismissNameConflict() },
-                title = { Text("该条码已有记录", fontSize = 16.sp, fontWeight = FontWeight.Medium) },
+                title = { Text(I18n.s("该条码已有记录", "This barcode already exists"), fontSize = 16.sp, fontWeight = FontWeight.Medium) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "条码 ${conflict.barcode}",
+                            I18n.s("条码 ${conflict.barcode}", "Barcode ${conflict.barcode}"),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             "已有商品：${conflict.oldName}\n" +
                                 "你改为：${conflict.newName}\n\n" +
-                                "这个条码以后关联哪个商品？",
+                                I18n.s("这个条码以后关联哪个商品？", "Which item should this barcode link to?"),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -766,7 +778,7 @@ fun InboundScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                "改为新名称（旧条目同步改名）",
+                                I18n.s("改为新名称（旧条目同步改名）", "Use new name (rename the old item too)"),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -774,13 +786,13 @@ fun InboundScreen(
                             onClick = { vm.resolveConflictAsNewItem() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("这是另一件商品，新建条目", color = MaterialTheme.colorScheme.primary)
+                            Text(I18n.s("这是另一件商品，新建条目", "This is a different item, create new"), color = MaterialTheme.colorScheme.primary)
                         }
                         TextButton(
                             onClick = { vm.resolveConflictKeepOld() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("沿用原名", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(I18n.s("沿用原名", "Keep the old name"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -798,10 +810,10 @@ fun InboundScreen(
                     TextButton(onClick = {
                         pickerState.selectedDateMillis?.let { vm.setProductionDate(it) }
                         showDatePicker = false
-                    }) { Text("确定") }
+                    }) { Text(I18n.s("确定", "OK")) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                    TextButton(onClick = { showDatePicker = false }) { Text(I18n.s("取消", "Cancel")) }
                 }
             ) {
                 DatePicker(state = pickerState)
@@ -815,9 +827,9 @@ fun InboundScreen(
                 title = {
                     Text(
                         if (cmState.editingId == null) {
-                            if (cmState.parentPath.isEmpty()) "新建一级分类"
-                            else "在「${cmState.parentPath}」下新建"
-                        } else "重命名分类",
+                            if (cmState.parentPath.isEmpty()) I18n.s("新建一级分类", "New level-1 category")
+                            else I18n.s("在「${cmState.parentPath}」下新建", "New under ${cmState.parentPath}")
+                        } else I18n.s("重命名分类", "Rename category"),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -828,7 +840,7 @@ fun InboundScreen(
                             value = cmState.inputName,
                             onValueChange = { vm.setCategoryInput(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("分类名称", fontSize = 14.sp) },
+                            placeholder = { Text(I18n.s("分类名称", "Category name"), fontSize = 14.sp) },
                             singleLine = true,
                             shape = RoundedCornerShape(10.dp),
                             isError = cmState.error != null
@@ -840,10 +852,10 @@ fun InboundScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { vm.submitCategoryEdit() }) { Text("保存") }
+                    TextButton(onClick = { vm.submitCategoryEdit() }) { Text(I18n.s("保存", "Save")) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { vm.closeCategoryEditor() }) { Text("取消") }
+                    TextButton(onClick = { vm.closeCategoryEditor() }) { Text(I18n.s("取消", "Cancel")) }
                 }
             )
         }
@@ -856,18 +868,25 @@ fun InboundScreen(
             val dupUnit = (dup["unit"] as? String) ?: s.unit
             AlertDialog(
                 onDismissRequest = { vm.inboundDismissDup() },
-                title = { Text("已存在同规格商品", fontSize = 16.sp) },
-                text = { Text("${s.name.trim()} 当前有 ${fmtQty(existingQty)} $dupUnit") },
+                title = { Text(I18n.s("已存在同规格商品", "An item with the same spec exists"), fontSize = 16.sp) },
+                text = {
+                        Text(
+                            I18n.s(
+                                "${s.name.trim()} 当前有 ${fmtQty(existingQty)} $dupUnit",
+                                "${s.name.trim()} currently has ${fmtQty(existingQty)} $dupUnit"
+                            )
+                        )
+                    },
                 confirmButton = {
                     TextButton(onClick = {
                         vm.inboundChooseAppend { if (it != null) onSaved(it) }
-                    }) { Text("追加数量") }
+                    }) { Text(I18n.s("追加数量", "Add quantity")) }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         vm.inboundDismissDup()
                         vm.inboundSave(true) { if (it != null) onSaved(it) }
-                    }) { Text("另建规格") }
+                    }) { Text(I18n.s("另建规格", "Create separate spec")) }
                 }
             )
         }

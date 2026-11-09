@@ -1,5 +1,7 @@
 package cn.levanll.inventory.ui
 
+import cn.levanll.inventory.i18n.I18n
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -137,7 +139,7 @@ fun ConfirmDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(I18n.s("取消", "Cancel")) }
         }
     )
 }

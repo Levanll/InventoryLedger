@@ -47,6 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.UnitNames
+import cn.levanll.inventory.i18n.Lang
+import cn.levanll.inventory.i18n.CategoryNames
 import cn.levanll.inventory.data.dao.CategoryStat
 import cn.levanll.inventory.data.dao.ItemWithCategory
 import cn.levanll.inventory.domain.Constants
@@ -81,7 +85,7 @@ fun InventoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "库存",
+                    I18n.s("库存", "Inventory"),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -89,11 +93,24 @@ fun InventoryScreen(
                 )
                 if (state.inStockKinds > 0) {
                     Text(
-                        "${state.inStockKinds} 种 · ${fmtQty(state.totalQty)} 件",
+                        I18n.s(
+                            "${state.inStockKinds} 种 · ${fmtQty(state.totalQty)} 件",
+                            "${state.inStockKinds} kinds · ${fmtQty(state.totalQty)} pcs"
+                        ),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                // 语言切换：库存页直接可切，不必绕到统计页
+                Text(
+                    if (I18n.lang == Lang.ZH) "EN" else "中文",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { I18n.toggle() }
+                        .padding(start = 10.dp, top = 6.dp, bottom = 6.dp, end = 2.dp)
+                )
             }
 
             // 搜索
@@ -104,12 +121,12 @@ fun InventoryScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .height(52.dp),
-                placeholder = { Text("搜索名称或规格", fontSize = 14.sp) },
+                placeholder = { Text(I18n.s("搜索名称或规格", "Search name or spec"), fontSize = 14.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (state.keyword.isNotEmpty()) {
                         Icon(
-                            Icons.Default.Close, "清空",
+                            Icons.Default.Close, I18n.s("清空", "Clear"),
                             modifier = Modifier
                                 .size(18.dp)
                                 .clickable { vm.setKeyword("") }
@@ -137,9 +154,9 @@ fun InventoryScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item { Chip("全部", state.selectedCat == null) { vm.setCategory(null) } }
+                    item { Chip(I18n.s("全部", "All"), state.selectedCat == null) { vm.setCategory(null) } }
                     items(state.cats, key = { "${it.id}_${it.count}" }) { c: CategoryStat ->
-                        Chip(c.name, state.selectedCat == c.id) { vm.setCategory(c.id) }
+                        Chip(CategoryNames.of(c.name), state.selectedCat == c.id) { vm.setCategory(c.id) }
                     }
                 }
             }
@@ -147,13 +164,19 @@ fun InventoryScreen(
             // 提示条：临期优先于低库存
             if (state.expiringCount > 0 && !dismissExpiring) {
                 HintBar(
-                    text = "${state.expiringCount} 件临期或已过期",
+                    text = I18n.s(
+                        "${state.expiringCount} 件临期或已过期",
+                        "${state.expiringCount} expiring or expired"
+                    ),
                     tint = MaterialTheme.colorScheme.error,
                     onDismiss = { dismissExpiring = true }
                 )
             } else if (state.lowCount > 0 && !dismissLow) {
                 HintBar(
-                    text = "${state.lowCount} 件库存偏低",
+                    text = I18n.s(
+                        "${state.lowCount} 件库存偏低",
+                        "${state.lowCount} low on stock"
+                    ),
                     tint = Color(0xFFE8940A),
                     onDismiss = { dismissLow = true }
                 )
@@ -167,7 +190,7 @@ fun InventoryScreen(
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("最近：", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(I18n.s("最近：", "Recent: "), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     state.recent.forEach { r ->
                         Text(
                             r.name,
@@ -187,7 +210,7 @@ fun InventoryScreen(
 
             when {
                 state.loading -> LoadingSkeleton()
-                state.items.isEmpty() -> EmptyState("还没有商品", "立即入库") { onOpenInbound(null) }
+                state.items.isEmpty() -> EmptyState(I18n.s("还没有商品", "No items yet"), I18n.s("立即入库", "Add now")) { onOpenInbound(null) }
                 else -> {
                     LazyColumn(
                         modifier = Modifier
@@ -228,7 +251,7 @@ fun InventoryScreen(
                     .clickable { onOpenInbound(null) },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Add, "入库", tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.Add, I18n.s("入库", "Add Stock"), tint = Color.White, modifier = Modifier.size(28.dp))
             }
         }
     }
@@ -238,11 +261,11 @@ fun InventoryScreen(
     if (target != null) {
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("删除「${target.name}」？", fontSize = 16.sp, fontWeight = FontWeight.Medium) },
+            title = { Text(I18n.s("删除「${target.name}」？", "Delete ${target.name}?"), fontSize = 16.sp, fontWeight = FontWeight.Medium) },
             text = {
                 Text(
                     "数量已为 0，已从库存列表移除。\n是否同时删除该商品？\n\n" +
-                        "删除后仍可在「统计 → 月度明细」的历史记录中查到它。",
+                        I18n.s("删除后仍可在「统计 → 月度明细」的历史记录中查到它。", "It still appears in Stats -> Monthly details."),
                     fontSize = 13.sp
                 )
             },
@@ -250,10 +273,10 @@ fun InventoryScreen(
                 TextButton(onClick = {
                     vm.deleteZeroItem(target.id, target.name)
                     pendingDelete = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(I18n.s("删除", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("保留记录") }
+                TextButton(onClick = { pendingDelete = null }) { Text(I18n.s("保留记录", "Keep record")) }
             }
         )
     }
@@ -264,7 +287,7 @@ fun InventoryScreen(
         AlertDialog(
             onDismissRequest = { vm.dismissExpiredDialog() },
             title = {
-                Text("有 ${expired.size} 件商品已过期", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(I18n.s("有 ${expired.size} 件商品已过期", "${expired.size} items expired"), fontSize = 16.sp, fontWeight = FontWeight.Medium)
             },
             text = {
                 Column(
@@ -285,14 +308,14 @@ fun InventoryScreen(
                                 )
                                 if (it.categoryPath().isNotEmpty()) {
                                     Text(
-                                        it.categoryPath(),
+                                        CategoryNames.ofPath(it.categoryPath()),
                                         fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                             Text(
-                                "已过期 ${-(it.daysLeft ?: 0)} 天",
+                                I18n.s("已过期 ${-(it.daysLeft ?: 0)} 天", "Expired ${-(it.daysLeft ?: 0)}d"),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Medium
@@ -302,7 +325,7 @@ fun InventoryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { vm.dismissExpiredDialog() }) { Text("知道了") }
+                TextButton(onClick = { vm.dismissExpiredDialog() }) { Text(I18n.s("知道了", "Got it")) }
             }
         )
     }
@@ -387,7 +410,7 @@ private fun ItemRowWithStepper(
         }
 
         if (isLow) {
-            Text("偏低", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
+            Text(I18n.s("偏低", "Low"), fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(4.dp))
         }
 
@@ -406,7 +429,7 @@ private fun ItemRowWithStepper(
         StepCircle("＋", enabled = true) { onPlus() }
 
         Text(
-            item.unit,
+            UnitNames.of(item.unit),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 3.dp).width(24.dp)
@@ -428,18 +451,18 @@ private fun CategoryPathLine(item: ItemWithCategory) {
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (l3 != null) {
-            Text(l1, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
             Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            Text(l2 ?: "", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+            Text(CategoryNames.of(l2 ?: ""), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
             Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             Text(
-                l3,
+                CategoryNames.of(l3),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium
             )
         } else if (l2 != null) {
-            Text(l1, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
             Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             Text(
                 l2,
@@ -448,7 +471,7 @@ private fun CategoryPathLine(item: ItemWithCategory) {
                 fontWeight = FontWeight.Medium
             )
         } else {
-            Text(l1, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
         }
     }
 }
@@ -458,16 +481,16 @@ private fun CategoryPathLine(item: ItemWithCategory) {
 private fun ExpiryBadge(status: ExpiryStatus, daysLeft: Int?) {
     val (text, fg, bg) = when (status) {
         ExpiryStatus.EXPIRED ->
-            Triple("已过期 ${-(daysLeft ?: 0)} 天", Color(0xFFD32F2F), Color(0x1FD32F2F))
+            Triple(I18n.s("已过期 ${-(daysLeft ?: 0)} 天", "Expired ${-(daysLeft ?: 0)}d"), Color(0xFFD32F2F), Color(0x1FD32F2F))
         ExpiryStatus.URGENT ->
-            Triple("剩 ${daysLeft} 天", Color(0xFFD32F2F), Color(0x1FD32F2F))
+            Triple(I18n.s("剩 ${daysLeft} 天", "${daysLeft}d left"), Color(0xFFD32F2F), Color(0x1FD32F2F))
         ExpiryStatus.SOON ->
-            Triple("剩 ${daysLeft} 天", Color(0xFFE8940A), Color(0x1FE8940A))
+            Triple(I18n.s("剩 ${daysLeft} 天", "${daysLeft}d left"), Color(0xFFE8940A), Color(0x1FE8940A))
         ExpiryStatus.NEAR ->
-            Triple("剩 ${daysLeft} 天", Color(0xFF8A9A2B), Color(0x1F8A9A2B))
+            Triple(I18n.s("剩 ${daysLeft} 天", "${daysLeft}d left"), Color(0xFF8A9A2B), Color(0x1F8A9A2B))
         ExpiryStatus.NORMAL ->
             Triple(
-                "剩 ${daysLeft} 天",
+                I18n.s("剩 ${daysLeft} 天", "${daysLeft}d left"),
                 MaterialTheme.colorScheme.onSurfaceVariant,
                 MaterialTheme.colorScheme.surfaceVariant
             )
