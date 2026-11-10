@@ -1,7 +1,7 @@
 # HANDOFF — 项目交接
 
 > 给接手这个项目的下一个 AI 会话 / 开发者。读完这一份就能继续干活，不必翻历史对话。
-> 最后更新：2026-11-10，对应 v1.1.0。
+> 最后更新：2026-11-10，对应 v1.3.0。
 
 ---
 
@@ -26,9 +26,9 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.2.0**（versionCode 3） |
-| Release | GitHub 上 `v1.2.0` / `v1.1.0` / `v1.0.0` 三个，都有 APK，**全部为中英对照** |
-| APK 体积 | 2.60 MB（R8 混淆后） |
+| 版本 | **v1.3.0**（versionCode 4） |
+| Release | GitHub 上 `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 四个，都有 APK，**全部为中英对照** |
+| APK 体积 | 2.61 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
 | 最近提交 | `200ee36` 启用 GitHub Pages 并在 README 加入站点链接 |
 | 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs`，状态 `built` |
@@ -100,13 +100,25 @@ cd "D:\Documents\deepseek-harness\default-workspace\inventory-android"
 
 ```
 keystore/  release.jks  +  keystore.properties
-密码：UTJdVqnVhSdTQMiR5JZuKyDM
 别名：inventory
+密码：见 keystore.properties 的 storePassword / keyPassword（两者相同）
 ```
 
 `keystore/` **已在 .gitignore 排除**，只存在于本地。
 
+**密码不写进任何文档或提交。** 曾把明文密码写在 HANDOFF 里并推送到公开仓库，
+2026-11-10 已通过 `keytool -storepasswd` 更换密码（证书指纹不变，已安装用户仍可覆盖升级）。
+以后需要交接密码时，走私下渠道，不要落到仓库里。
+
 **这个文件和密码丢了，已安装用户就永远收不到更新**（Android 只允许同签名覆盖安装）。任何情况下不要重新生成 keystore。
+
+证书指纹（改密码不会变，可用来验证 keystore 是否被替换）：
+
+```
+SHA-256: 8A:15:BE:DB:28:F4:B4:5F:EC:81:51:A8:A0:17:C2:A4:AE:91:FE:E4:2B:04:D1:5B:2D:3C:4A:82:26:25:1F:BD
+DN:      CN=Levanll, OU=Personal, O=Levanll, L=Unknown, ST=Unknown, C=CN
+有效期至 2126-10-16，RSA 2048，SHA256withRSA
+```
 
 ### 测试设备
 
@@ -318,7 +330,7 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 |---|---|
 | `README.md` | 中文主 README，含界面预览 |
 | `README_EN.md` | 英文 README，结构与中文对称 |
-| `CHANGELOG.md` | 按版本记录，1.2.0 在最上 |
+| `CHANGELOG.md` | 按版本记录，1.3.0 在最上 |
 | `SECURITY.md` | 漏洞报告渠道 |
 | `HANDOFF.md` | 本文件 |
 | `docs/设计方案.md` | 数据模型、事务纪律、分类机制、i18n、迁移链 |
@@ -506,6 +518,46 @@ FROM category c JOIN item i ON i.category_id = c.id WHERE c.depth = 1
 修复前查询恒返回 0 行，修复后正确返回 4 个一级分类、21 个商品。
 
 ---
+
+## 十二·五、「已用完」分区与双语补全（v1.3.0）
+
+### 已用完分区
+
+归零弹窗有「删除 / 保留记录」两个选项，但 `ItemDao.search()` 固定带 `WHERE quantity > 0`，
+**两者都会让商品立刻从列表消失**，用户看不出差别，「保留记录」形同虚设。
+
+现在：`deleted_at IS NULL AND quantity <= 0` 的商品由 `ItemDao.listUsedUp()` 取出，
+渲染成列表底部的可折叠分区（`UsedUpHeader` / `UsedUpRow`，在 `InventoryScreen.kt`）。
+展开后每行有「恢复」「删除」。
+
+**踩过的坑**：`adjustQty()` 里先 `refreshInventory()` 再回调 `onZero()`，
+所以归零那次刷新查不到刚归零的商品。弹窗被「保留记录」关掉后必须**再刷一次**，
+否则用户点了保留看不到任何东西。这个缺陷就是本版本要修的核心问题。
+
+### 双语的三层边界
+
+| 层 | 载体 | 处理 |
+|---|---|---|
+| 界面文案 | `I18n.s(中文, English)` | 内联，切换即重组 |
+| 业务异常 | `AppException(code, 中文, payload, en = 英文)` | `message` 按当前语言动态返回，UI 直接展示 `e.message` |
+| 历史数据 | `stock_record.note` | **存稳定英文键**，显示时经 `RecordNotes.of()` 翻译 |
+
+第三层最容易漏。`note` 是落库的历史事实，写入时按当时语言存会导致切语言后新旧记录混杂。
+历史数据里已写死的中文（v1.3.0 之前）无法追溯改写，所以 `RecordNotes` 同时登记中文原文与英文键。
+
+**`AppException` 的参数顺序有讲究**：`(code, zh, payload, en)` —— payload 在第 3 位是为了兼容
+既有的 `AppException(code, "中文", mapOf(...))` 调用点，英文用具名参数 `en =` 传入。
+
+### R8 规则曾经完全无效
+
+`proguard-rules.pro` 里写的是 `com.example.inventory.**`，实际包名是 `cn.levanll.inventory`。
+四条 keep 规则自项目创建起就没生效过，`AppException` 一直被混淆成 `C1.a`。
+v1.3.0 修正后，`mapping.txt` 里这三个类保留原名，而未加 keep 的 `CategoryService` 仍是 `B1.l`。
+**改完 proguard 规则必须查 mapping.txt 验证，不能只看构建成功。**
+
+---
+
+---
 ## 十三、设计决策（不要轻易推翻）
 
 | 决策 | 理由 |
@@ -541,8 +593,8 @@ FROM category c JOIN item i ON i.category_id = c.id WHERE c.depth = 1
 
 ### 技术债 / 可改进处
 
-- `InboundScreen.kt` 862 行，是最大的单文件，可拆分
-- `MainViewModel.kt` 861 行，职责偏多
+- `InboundScreen.kt` 897 行，是最大的单文件，可拆分
+- `MainViewModel.kt` 992 行，职责偏多
 - 扫码功能尚未在荣耀设备实测
 - 站点未做移动端真机验证，窄屏下轮播与表格的换行未确认
 - `test-artifacts/` 约 150 MB，是测试中间产物，已在 gitignore；可清理但不影响功能
