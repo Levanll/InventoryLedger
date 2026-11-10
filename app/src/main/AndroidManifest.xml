@@ -5,7 +5,6 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 条码查商品信息需要联网；查不到或离线时应用照常可用。 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -14,8 +13,14 @@
         android:name="android.hardware.camera.autofocus"
         android:required="false" />
 
+    <!--
+        allowBackup=false：库存数据只留本机。
+        产品主张是「无云同步、数据只在本机」，若允许系统备份，
+        数据库会被同步到 Google 云端，与该主张矛盾。
+        代价：换机不能靠系统备份恢复，需重新录入（README 已如实说明）。
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"

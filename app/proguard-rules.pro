@@ -42,12 +42,12 @@
 
 # ---------- 应用自身模型 ----------
 # AppException 的 payload 通过字符串 key 取值，且错误码要跨层传递
--keep class com.example.inventory.domain.ModelsKt { *; }
--keep class com.example.inventory.domain.AppException { *; }
--keep class com.example.inventory.domain.ErrCode { *; }
+-keep class cn.levanll.inventory.domain.ModelsKt { *; }
+-keep class cn.levanll.inventory.domain.AppException { *; }
+-keep class cn.levanll.inventory.domain.ErrCode { *; }
 
 # 数据类被 Room 投影映射，按构造参数名匹配
--keepclassmembers class com.example.inventory.data.dao.** {
+-keepclassmembers class cn.levanll.inventory.data.dao.** {
     <fields>;
     <init>(...);
 }

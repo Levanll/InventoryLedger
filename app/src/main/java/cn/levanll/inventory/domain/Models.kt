@@ -1,5 +1,8 @@
 package cn.levanll.inventory.domain
 
+import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.Lang
+
 /** 流水类型 */
 object RecType {
     const val IN = "IN"
@@ -21,13 +24,25 @@ object ErrCode {
 
 /**
  * 业务异常。
+ *
+ * 携带中英两份文案，`message` 按当前语言动态返回 —— UI 里 `e.message` 直接展示即可，
+ * 不需要每个 catch 分支都写一次 `I18n.s()`。
+ *
+ * 参数顺序保持向后兼容：`AppException(code, "中文")` 与
+ * `AppException(code, "中文", mapOf(...))` 都照旧可用，
+ * 英文以具名参数 `en =` 传入。缺省时回落中文，漏写英文不会崩。
+ *
  * payload 用 Map 承载上下文（如 existingId / available），UI 据此生成具体文案。
  */
 class AppException(
     val code: String,
-    override val message: String,
-    val payload: Map<String, Any> = emptyMap()
-) : Exception(message)
+    private val zh: String,
+    val payload: Map<String, Any> = emptyMap(),
+    private val en: String? = null
+) : Exception(zh) {
+    override val message: String
+        get() = if (I18n.lang == Lang.ZH || en == null) zh else en
+}
 
 data class InboundInput(
     val name: String,

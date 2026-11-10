@@ -3,9 +3,11 @@ package cn.levanll.inventory.domain
 import androidx.room.withTransaction
 import cn.levanll.inventory.data.dao.ItemWithCategory
 import cn.levanll.inventory.data.db.AppDatabase
+import cn.levanll.inventory.data.entity.BarcodeMemoEntity
 import cn.levanll.inventory.data.entity.FormMemoEntity
 import cn.levanll.inventory.data.entity.ItemEntity
 import cn.levanll.inventory.data.entity.StockRecordEntity
+import cn.levanll.inventory.i18n.I18n
 
 /**
  * 库存核心服务
@@ -36,10 +38,22 @@ class InventoryService(private val db: AppDatabase) {
      */
     suspend fun inbound(input: InboundInput): InboundResult {
         val name = input.name.trim()
-        if (name.isEmpty()) throw AppException(ErrCode.INVALID_ARG, "名称不能为空")
-        if (input.qty <= Constants.QTY_MIN) throw AppException(ErrCode.INVALID_ARG, "数量必须大于 0")
+        if (name.isEmpty()) throw AppException(
+                ErrCode.INVALID_ARG,
+                "名称不能为空",
+                en = "Name cannot be empty"
+            )
+        if (input.qty <= Constants.QTY_MIN) throw AppException(
+                ErrCode.INVALID_ARG,
+                "数量必须大于 0",
+                en = "Quantity must be greater than 0"
+            )
         if (input.qty > Constants.QTY_MAX) {
-            throw AppException(ErrCode.INVALID_ARG, "单次入库不能超过 ${Constants.QTY_MAX.toInt()}")
+            throw AppException(
+                ErrCode.INVALID_ARG,
+                "单次入库不能超过 ${Constants.QTY_MAX.toInt()}",
+                en = "A single inbound cannot exceed ${Constants.QTY_MAX.toInt()}"
+            )
         }
 
         val (expEnabled, prodDate, shelfDays) = normalizeExpiry(input)
@@ -53,12 +67,17 @@ class InventoryService(private val db: AppDatabase) {
                 val item = itemDao.getById(input.existingItemId)
                     ?: throw AppException(
                         ErrCode.ITEM_NOT_FOUND, "待追加的商品不存在",
-                        mapOf("itemId" to input.existingItemId)
+                        mapOf("itemId" to input.existingItemId),
+                        en = "The item to append to does not exist"
                     )
                 val before = item.quantity
                 val after = round2(before + input.qty)
                 if (after > Constants.QTY_MAX) {
-                    throw AppException(ErrCode.INVALID_ARG, "库存不能超过 ${Constants.QTY_MAX.toInt()}")
+                    throw AppException(
+                    ErrCode.INVALID_ARG,
+                    "库存不能超过 ${Constants.QTY_MAX.toInt()}",
+                    en = "Stock cannot exceed ${Constants.QTY_MAX.toInt()}"
+                )
                 }
                 // 追加时若用户填了新保质期信息则覆盖，否则保留原值
                 val newProd = if (expEnabled) prodDate else item.productionDate
@@ -99,7 +118,8 @@ class InventoryService(private val db: AppDatabase) {
                             "existingId" to dup.id,
                             "existingQty" to dup.quantity,
                             "unit" to dup.unit
-                        )
+                        ),
+                        en = "An item with the same name and spec already exists"
                     )
                 }
                 if (dup != null && dup.quantity <= 0) {
@@ -122,7 +142,7 @@ class InventoryService(private val db: AppDatabase) {
                         StockRecordEntity(
                             itemId = dup.id, type = RecType.IN, delta = input.qty,
                             beforeQty = before, afterQty = after,
-                            note = "复用已归零条目", createdAt = now
+                            note = "Reused zeroed item", createdAt = now
                         )
                     )
                     saveMemo(Constants.MEMO_LAST_UNIT, input.unit, now)
@@ -167,10 +187,22 @@ class InventoryService(private val db: AppDatabase) {
         val p = input.productionDate
         val d = input.shelfLifeDays
         if (p == null || d == null) {
-            throw AppException(ErrCode.INVALID_ARG, "已开启保质期，请填写生产日期与保质期天数")
+            throw AppException(
+                ErrCode.INVALID_ARG,
+                "已开启保质期，请填写生产日期与保质期天数",
+                en = "Expiry tracking is on; please fill in the production date and shelf life"
+            )
         }
-        if (d <= 0) throw AppException(ErrCode.INVALID_ARG, "保质期天数必须大于 0")
-        if (d > 36500) throw AppException(ErrCode.INVALID_ARG, "保质期天数过大")
+        if (d <= 0) throw AppException(
+                ErrCode.INVALID_ARG,
+                "保质期天数必须大于 0",
+                en = "Shelf life days must be greater than 0"
+            )
+        if (d > 36500) throw AppException(
+                ErrCode.INVALID_ARG,
+                "保质期天数过大",
+                en = "Shelf life days is too large"
+            )
         return Triple(true, startOfDay(p), d)
     }
 
@@ -213,6 +245,54 @@ class InventoryService(private val db: AppDatabase) {
         }
     }
 
+    /**
+     * 条码冲突「改为新名称」：旧商品改名，同时更新条码记忆。
+     *
+     * 两步必须原子：只改名不更新条码记忆，下次扫码会带回旧名字；
+     * 只更新记忆不改名，商品列表里还是旧名。任一失败整体回滚。
+     */
+    suspend fun renameItemAndMemo(
+        itemId: Long,
+        newName: String,
+        barcode: String,
+        categoryId: Long?
+    ) {
+        db.withTransaction {
+            val now = System.currentTimeMillis()
+            val item = itemDao.getById(itemId) ?: return@withTransaction
+            itemDao.update(item.copy(name = newName, updatedAt = now))
+
+            val memoDao = db.barcodeDao()
+            if (memoDao.get(barcode) == null) {
+                memoDao.insert(
+                    BarcodeMemoEntity(
+                        barcode = barcode,
+                        name = newName,
+                        categoryId = categoryId,
+                        hitCount = 1,
+                        source = "local",
+                        updatedAt = now
+                    )
+                )
+            } else {
+                memoDao.update(
+                    barcode = barcode,
+                    name = newName,
+                    brand = null,
+                    spec = null,
+                    categoryId = categoryId,
+                    source = "local",
+                    now = now
+                )
+            }
+        }
+    }
+
+    /** 记住上次使用的单位（表单记忆，写操作走事务） */
+    suspend fun saveLastUnit(unit: String) {
+        db.withTransaction { saveMemo(Constants.MEMO_LAST_UNIT, unit, System.currentTimeMillis()) }
+    }
+
     // ==========================================================
     // 列表内加减
     // ==========================================================
@@ -220,22 +300,35 @@ class InventoryService(private val db: AppDatabase) {
     suspend fun adjustQuantity(itemId: Long, delta: Double): Double {
         if (delta == 0.0) {
             val cur = itemDao.getById(itemId)
-                ?: throw AppException(ErrCode.ITEM_NOT_FOUND, "商品不存在")
+                ?: throw AppException(
+                    ErrCode.ITEM_NOT_FOUND,
+                    "商品不存在",
+                    en = "Item not found"
+                )
             return cur.quantity
         }
         return db.withTransaction {
             val now = System.currentTimeMillis()
             val item = itemDao.getById(itemId)
-                ?: throw AppException(ErrCode.ITEM_NOT_FOUND, "商品不存在")
+                ?: throw AppException(
+                    ErrCode.ITEM_NOT_FOUND,
+                    "商品不存在",
+                    en = "Item not found"
+                )
             val before = item.quantity
             val after = round2(before + delta)
             if (after > Constants.QTY_MAX) {
-                throw AppException(ErrCode.INVALID_ARG, "库存不能超过 ${Constants.QTY_MAX.toInt()}")
+                throw AppException(
+                    ErrCode.INVALID_ARG,
+                    "库存不能超过 ${Constants.QTY_MAX.toInt()}",
+                    en = "Stock cannot exceed ${Constants.QTY_MAX.toInt()}"
+                )
             }
             if (after < 0) {
                 throw AppException(
                     ErrCode.INSUFFICIENT_STOCK, "库存不足",
-                    mapOf("itemId" to itemId, "name" to item.name, "available" to before)
+                    mapOf("itemId" to itemId, "name" to item.name, "available" to before),
+                    en = "Insufficient stock"
                 )
             }
             itemDao.setQuantity(itemId, after, now)
@@ -247,7 +340,7 @@ class InventoryService(private val db: AppDatabase) {
                     beforeQty = before,
                     afterQty = after,
                     reason = "MANUAL",
-                    note = if (delta > 0) "列表快速加量" else "列表快速减量",
+                    note = if (delta > 0) "Quick add" else "Quick remove",
                     createdAt = now
                 )
             )
@@ -258,9 +351,17 @@ class InventoryService(private val db: AppDatabase) {
     suspend fun deleteZeroItem(itemId: Long) {
         db.withTransaction {
             val item = itemDao.getById(itemId)
-                ?: throw AppException(ErrCode.ITEM_NOT_FOUND, "商品不存在")
+                ?: throw AppException(
+                    ErrCode.ITEM_NOT_FOUND,
+                    "商品不存在",
+                    en = "Item not found"
+                )
             if (item.quantity > 0) {
-                throw AppException(ErrCode.INVALID_ARG, "该商品仍有库存，不能直接删除")
+                throw AppException(
+                    ErrCode.INVALID_ARG,
+                    "该商品仍有库存，不能直接删除",
+                    en = "This item still has stock and cannot be deleted"
+                )
             }
             itemDao.softDelete(itemId, System.currentTimeMillis())
         }
@@ -280,10 +381,18 @@ class InventoryService(private val db: AppDatabase) {
         db.withTransaction {
             val now = System.currentTimeMillis()
             val rec = recordDao.getRevertable(recordId)
-                ?: throw AppException(ErrCode.ALREADY_REVERTED, "该记录已撤销或不存在")
+                ?: throw AppException(
+                    ErrCode.ALREADY_REVERTED,
+                    "该记录已撤销或不存在",
+                    en = "This record was already reverted or does not exist"
+                )
 
             val cur = itemDao.getById(rec.itemId)
-                ?: throw AppException(ErrCode.ITEM_NOT_FOUND, "商品已删除，无法撤销")
+                ?: throw AppException(
+                    ErrCode.ITEM_NOT_FOUND,
+                    "商品已删除，无法撤销",
+                    en = "The item has been deleted and cannot be reverted"
+                )
 
             val before = cur.quantity
             val after = round2(before - rec.delta)
@@ -291,7 +400,8 @@ class InventoryService(private val db: AppDatabase) {
                 throw AppException(
                     ErrCode.INSUFFICIENT_STOCK,
                     "库存已被消耗，无法撤销",
-                    mapOf("itemId" to cur.id, "name" to cur.name, "available" to before)
+                    mapOf("itemId" to cur.id, "name" to cur.name, "available" to before),
+                    en = "Stock has already been consumed and cannot be reverted"
                 )
             }
             itemDao.setQuantity(rec.itemId, after, now)
@@ -304,7 +414,7 @@ class InventoryService(private val db: AppDatabase) {
                     afterQty = after,
                     batchId = rec.batchId,
                     reason = "REVERT",
-                    note = "撤销 #$recordId",
+                    note = "Revert #$recordId",
                     createdAt = now
                 )
             )
@@ -331,6 +441,61 @@ class InventoryService(private val db: AppDatabase) {
     }
 
     suspend fun getItem(id: Long): ItemEntity? = itemDao.getById(id)
+
+    /**
+     * 「已用完」清单：数量归零但未删除的商品。
+     * 与 [search] 共用筛选条件，保证切换筛选时两个分区一致。
+     */
+    suspend fun listUsedUp(kw: String, categoryId: Long?): List<ItemWithCategory> {
+        val now = System.currentTimeMillis()
+        return if (categoryId == null) {
+            itemDao.listUsedUp(kw, 0, listOf(-1L), now)
+        } else {
+            val ids = catDao.listDescendantIds(categoryId)
+            itemDao.listUsedUp(kw, 1, ids.ifEmpty { listOf(-1L) }, now)
+        }
+    }
+
+    /**
+     * 把已用完的商品恢复到库存：数量加回指定值，并写一条入库流水。
+     * 复用 inbound 的追加分支语义，保证流水与数量一致。
+     */
+    suspend fun restoreUsedUp(itemId: Long, qty: Double) {
+        if (qty <= 0) throw AppException(
+            ErrCode.INVALID_ARG,
+            "恢复数量必须大于 0",
+            en = "Restore quantity must be greater than 0"
+        )
+        db.withTransaction {
+            val now = System.currentTimeMillis()
+            val item = itemDao.getById(itemId)
+                ?: throw AppException(
+                    ErrCode.ITEM_NOT_FOUND,
+                    "商品不存在",
+                    en = "Item not found"
+                )
+            if (item.deletedAt != null) throw AppException(
+                ErrCode.ITEM_NOT_FOUND,
+                "该商品已被删除，无法恢复",
+                en = "This item was deleted and cannot be restored"
+            )
+            val before = item.quantity
+            val after = round2(before + qty)
+            itemDao.setQuantity(itemId, after, now)
+            recordDao.insert(
+                StockRecordEntity(
+                    itemId = itemId,
+                    type = RecType.IN,
+                    delta = qty,
+                    beforeQty = before,
+                    afterQty = after,
+                    reason = "MANUAL",
+                    note = "Restored from used-up",
+                    createdAt = now
+                )
+            )
+        }
+    }
 
     suspend fun suggestByName(kw: String): List<ItemWithCategory> =
         itemDao.suggestByName(kw, System.currentTimeMillis(), Constants.SUGGEST_LIMIT)

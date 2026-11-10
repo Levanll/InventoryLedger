@@ -281,6 +281,56 @@ interface ItemDao {
     @Query("SELECT COUNT(*) FROM item WHERE deleted_at IS NULL AND quantity > 0")
     suspend fun countInStock(): Int
 
+    /**
+     * 「已用完」清单：数量归零但未删除的商品。
+     *
+     * 为什么要单独查而不是并进 search()：
+     * 主列表是「现在有什么」，已用完是「曾经有什么」。
+     * 混在一起会让主列表被历史条目撑长，而完全查不到又让
+     * 「保留记录」这个选项形同虚设 —— 用户点了保留却看不到任何东西。
+     *
+     * 排序与主列表一致（分类树先序），这样同一分类的新旧商品挨在一起。
+     */
+    @Query(
+        """
+        SELECT i.id AS id, i.name AS name, i.spec AS spec, i.unit AS unit,
+               i.barcode AS barcode, i.category_id AS categoryId, i.quantity AS quantity,
+               i.low_threshold AS lowThreshold, i.image_uri AS imageUri, i.note AS note,
+               i.created_at AS createdAt, i.updated_at AS updatedAt,
+               c1.name AS catL1, c2.name AS catL2, c3.name AS catL3,
+               c1.id AS catL1Id, c2.id AS catL2Id,
+               i.expiry_enabled AS expiryEnabled, i.production_date AS productionDate,
+               i.shelf_life_days AS shelfLifeDays,
+               CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
+                         AND i.shelf_life_days IS NOT NULL
+                    THEN i.production_date + i.shelf_life_days * 86400000
+                    ELSE NULL END AS expiryAt,
+               CASE WHEN i.expiry_enabled = 1 AND i.production_date IS NOT NULL
+                         AND i.shelf_life_days IS NOT NULL
+                    THEN CAST((i.production_date + i.shelf_life_days * 86400000 - :now) / 86400000 AS INTEGER)
+                    ELSE NULL END AS daysLeft
+        FROM item i
+        LEFT JOIN category c3 ON c3.id = i.category_id
+        LEFT JOIN category c2 ON c2.id = c3.parent_id
+        LEFT JOIN category c1 ON c1.id = c2.parent_id
+        WHERE i.deleted_at IS NULL AND i.quantity <= 0
+          AND (:kw = '' OR i.name LIKE '%' || :kw || '%' OR i.spec LIKE '%' || :kw || '%')
+          AND (:filterCat = 0 OR i.category_id IN (:categoryIds))
+        ORDER BY
+          IFNULL(c1.sort, 9999) ASC,
+          IFNULL(c2.sort, 9999) ASC,
+          IFNULL(c3.sort, 9999) ASC,
+          i.category_id ASC,
+          i.updated_at DESC
+        """
+    )
+    suspend fun listUsedUp(
+        kw: String,
+        filterCat: Int,
+        categoryIds: List<Long>,
+        now: Long
+    ): List<ItemWithCategory>
+
     @Query(
         """
         SELECT i.id AS id, i.name AS name, i.spec AS spec, i.unit AS unit,

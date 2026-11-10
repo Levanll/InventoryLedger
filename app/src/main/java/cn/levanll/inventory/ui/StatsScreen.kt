@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.levanll.inventory.i18n.I18n
+import cn.levanll.inventory.i18n.RecordNotes
 import cn.levanll.inventory.i18n.UnitNames
 import cn.levanll.inventory.i18n.Lang
 import cn.levanll.inventory.domain.DetailRow
@@ -536,7 +537,7 @@ private fun DetailRowItem(d: DetailRow) {
                 }
             }
             Text(
-                fmtDateTime(d.createdAt) + if (d.note != null) " · ${d.note}" else "",
+                fmtDateTime(d.createdAt) + (RecordNotes.of(d.note)?.let { " · $it" } ?: ""),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

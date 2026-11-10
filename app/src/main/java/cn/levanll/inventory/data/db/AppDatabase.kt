@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import cn.levanll.inventory.data.dao.BarcodeDao
 import cn.levanll.inventory.data.dao.CategoryDao
@@ -385,31 +386,36 @@ object SeedData {
 
         val now = System.currentTimeMillis()
 
-        for ((idx, root) in TREE.withIndex()) {
-            ensureCategory(catDao, root, null, 1, now, idx * 1000)
-        }
+        // 全量补种是「分类树 + 83 条规则 + 版本标记」三步写，
+        // 必须原子：中途失败若留下部分分类而没有 seed_version，
+        // 下次启动会重复插入并撞 UNIQUE(name, parent_id)。
+        db.withTransaction {
+            for (root in TREE) {
+                ensureCategory(catDao, root, null, 1, now)
+            }
 
-        for (r in RULES) {
-            val existing = catDao.findRulesByTokens(listOf(r.token))
-            if (existing.isNotEmpty()) continue
-            val catId = resolvePath(catDao, r.path) ?: continue
-            catDao.insertRule(
-                CategoryRuleEntity(
-                    token = r.token,
-                    categoryId = catId,
-                    weight = r.weight,
-                    source = "system",
-                    hitCount = 1,
-                    updatedAt = now
+            for (r in RULES) {
+                val existing = catDao.findRulesByTokens(listOf(r.token))
+                if (existing.isNotEmpty()) continue
+                val catId = resolvePath(catDao, r.path) ?: continue
+                catDao.insertRule(
+                    CategoryRuleEntity(
+                        token = r.token,
+                        categoryId = catId,
+                        weight = r.weight,
+                        source = "system",
+                        hitCount = 1,
+                        updatedAt = now
+                    )
                 )
-            )
-        }
+            }
 
-        val prev = catDao.getMemo(KEY_SEED_VERSION)
-        if (prev == null) {
-            catDao.insertMemo(FormMemoEntity(KEY_SEED_VERSION, SEED_VERSION.toString(), now))
-        } else {
-            catDao.updateMemo(KEY_SEED_VERSION, SEED_VERSION.toString(), now)
+            val prev = catDao.getMemo(KEY_SEED_VERSION)
+            if (prev == null) {
+                catDao.insertMemo(FormMemoEntity(KEY_SEED_VERSION, SEED_VERSION.toString(), now))
+            } else {
+                catDao.updateMemo(KEY_SEED_VERSION, SEED_VERSION.toString(), now)
+            }
         }
     }
 
@@ -418,8 +424,7 @@ object SeedData {
         node: SeedCat,
         parentId: Long?,
         depth: Int,
-        now: Long,
-        sort: Int
+        now: Long
     ): Long {
         val existingId = dao.findIdByName(node.name, parentId)
         val id = existingId ?: dao.insert(
@@ -436,7 +441,7 @@ object SeedData {
             dao.setDepthIfWrong(existingId, depth)
         }
         for (child in node.children) {
-            ensureCategory(dao, child, id, depth + 1, now, sort)
+            ensureCategory(dao, child, id, depth + 1, now)
         }
         return id
     }

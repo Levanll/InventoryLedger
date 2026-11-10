@@ -232,7 +232,7 @@ fun InboundScreen(
                         }
                         if (sug.categoryHint != null) {
                             Text(
-                                I18n.s("参考分类 ${sug.categoryHint}", "Suggested ${CategoryNames.ofPath(sug.categoryHint ?: "")}"),
+                                I18n.s("参考分类 ${sug.categoryHint}", "Suggested ${CategoryNames.ofPath(sug.categoryHint)}"),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -760,8 +760,10 @@ fun InboundScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "已有商品：${conflict.oldName}\n" +
-                                "你改为：${conflict.newName}\n\n" +
+                            I18n.s(
+                                "已有商品：${conflict.oldName}\n你改为：${conflict.newName}\n\n",
+                                "Existing item: ${conflict.oldName}\nYou changed it to: ${conflict.newName}\n\n"
+                            ) +
                                 I18n.s("这个条码以后关联哪个商品？", "Which item should this barcode link to?"),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface

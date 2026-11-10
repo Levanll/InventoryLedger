@@ -1,6 +1,7 @@
 package cn.levanll.inventory.domain
 
 import android.util.Log
+import androidx.room.withTransaction
 import cn.levanll.inventory.data.db.AppDatabase
 import cn.levanll.inventory.data.entity.BarcodeMemoEntity
 import kotlinx.coroutines.Dispatchers
@@ -89,7 +90,8 @@ class BarcodeLookupService(private val db: AppDatabase) {
         // 2) 本地自学习库（最高优先）
         val memo = barcodeDao.get(code)
         if (memo != null) {
-            barcodeDao.bumpHit(code, System.currentTimeMillis())
+            // 命中计数是写操作，走事务（项目约定：所有写操作经 withTransaction）
+            db.withTransaction { barcodeDao.bumpHit(code, System.currentTimeMillis()) }
             val info = ProductInfo(
                 barcode = code,
                 name = memo.name,
@@ -144,29 +146,33 @@ class BarcodeLookupService(private val db: AppDatabase) {
         if (code.isEmpty() || name.isBlank()) return@withContext
         val now = System.currentTimeMillis()
 
-        if (barcodeDao.get(code) == null) {
-            barcodeDao.insert(
-                BarcodeMemoEntity(
+        // 读-判断-写必须原子：否则并发扫码时两个请求都判定「不存在」，
+        // 后一个 insert 会撞 barcode 唯一索引抛异常。
+        db.withTransaction {
+            if (barcodeDao.get(code) == null) {
+                barcodeDao.insert(
+                    BarcodeMemoEntity(
+                        barcode = code,
+                        name = name.trim(),
+                        brand = brand?.trim()?.ifEmpty { null },
+                        spec = spec?.trim()?.ifEmpty { null },
+                        categoryId = categoryId,
+                        hitCount = 1,
+                        source = source,
+                        updatedAt = now
+                    )
+                )
+            } else {
+                barcodeDao.update(
                     barcode = code,
                     name = name.trim(),
                     brand = brand?.trim()?.ifEmpty { null },
                     spec = spec?.trim()?.ifEmpty { null },
                     categoryId = categoryId,
-                    hitCount = 1,
                     source = source,
-                    updatedAt = now
+                    now = now
                 )
-            )
-        } else {
-            barcodeDao.update(
-                barcode = code,
-                name = name.trim(),
-                brand = brand?.trim()?.ifEmpty { null },
-                spec = spec?.trim()?.ifEmpty { null },
-                categoryId = categoryId,
-                source = source,
-                now = now
-            )
+            }
         }
         cache.remove(code)
     }

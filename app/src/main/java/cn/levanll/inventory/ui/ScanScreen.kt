@@ -94,7 +94,7 @@ fun ScanScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission = granted
-        if (!granted) lastError = I18n.s("未获得相机权限，无法扫码", "未获得相机权限，无法Scan")
+        if (!granted) lastError = I18n.s("未获得相机权限，无法扫码", "Camera permission denied, cannot scan")
     }
 
     LaunchedEffect(Unit) {
