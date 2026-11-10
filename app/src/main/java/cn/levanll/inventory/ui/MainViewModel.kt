@@ -568,6 +568,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         barcode = c.barcode,
                         categoryId = _inbound.value.categoryId
                     )
+                    // renameItemAndMemo 直接写 barcode_memo 表，不走 remember()，
+                    // 所以内存缓存不会被清。若本次会话早先扫过这个条码，缓存里
+                    // 还是旧名称，再扫一次会把旧名字填回表单。
+                    barcodeLookup.invalidate(c.barcode)
                 }
                 _inbound.value = _inbound.value.copy(name = c.newName, nameConflict = null)
                 refreshInventory()

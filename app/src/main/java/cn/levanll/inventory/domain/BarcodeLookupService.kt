@@ -181,6 +181,19 @@ class BarcodeLookupService(private val db: AppDatabase) {
         cache.clear()
     }
 
+    /**
+     * 让某个条码的内存缓存失效。
+     *
+     * 当条码对应的数据被别处改写（例如冲突弹窗里改名后直接更新了 barcode_memo 表），
+     * 缓存里的 ProductInfo 就成了旧值。下次 lookup() 会在第 1 步直接命中它并返回旧名称，
+     * 表现为「改了名但再扫一次又变回去」。
+     *
+     * 与 remember() 末尾的 cache.remove 同源，抽出来供不经过 remember 的写入路径调用。
+     */
+    fun invalidate(barcode: String) {
+        cache.remove(barcode.trim())
+    }
+
     // ==========================================================
     // 数据源 1：Open Food Facts
     // ==========================================================

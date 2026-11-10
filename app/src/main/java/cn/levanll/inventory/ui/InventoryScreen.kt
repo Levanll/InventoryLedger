@@ -216,7 +216,12 @@ fun InventoryScreen(
 
             when {
                 state.loading -> LoadingSkeleton()
-                state.items.isEmpty() -> EmptyState(I18n.s("还没有商品", "No items yet"), I18n.s("立即入库", "Add now")) { onOpenInbound(null) }
+                // 只有「主列表和已用完都为空」才算真正空库存。
+                // 若只看 items，把最后一个商品归零并选「保留记录」后，
+                // 已用完分区会连同「恢复/删除」入口一起消失，
+                // 界面反而显示「还没有商品」—— 正是本版本要修的那个问题。
+                state.items.isEmpty() && state.usedUp.isEmpty() ->
+                    EmptyState(I18n.s("还没有商品", "No items yet"), I18n.s("立即入库", "Add now")) { onOpenInbound(null) }
                 else -> {
                     val listState = rememberLazyListState()
 

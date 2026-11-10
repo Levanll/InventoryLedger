@@ -15,12 +15,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 ADB = r"F:\android-dev\sdk\platform-tools\adb.exe"
-LOCAL_TMP = os.path.join(
-    r"D:\Documents\deepseek-harness\default-workspace\inventory-android\test-artifacts",
-    "_ui.xml",
-)
+LOCAL_TMP = os.path.join(tempfile.gettempdir(), "_ui.xml")
 
 
 def detect_serial():

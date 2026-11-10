@@ -4,7 +4,7 @@
 
 用法：
     python scripts/create_release.py 1.3.0 --body notes/v1.3.0.md
-    python scripts/create_release.py 1.3.0 --body-file notes.md --dry-run
+    python scripts/create_release.py 1.3.0 --body notes/v1.3.0.md --dry-run
 
 Release 描述必须中英对照：中文段 ## 本次更新，英文段 ## What's new，
 --- 分隔，章节对称。脚本会校验这两段都在。
@@ -48,7 +48,12 @@ def api(path, method="GET", payload=None):
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return r.status, json.loads(r.read().decode("utf-8"))
+            raw = r.read()
+            # DELETE 返回 204 无 body。直接 json.loads(b"") 会抛 JSONDecodeError，
+            # 而它不是 HTTPError，不会被下面的 except 捕获，脚本会在重跑时崩掉。
+            if not raw.strip():
+                return r.status, None
+            return r.status, json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         return e.code, body

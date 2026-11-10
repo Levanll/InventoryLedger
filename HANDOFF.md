@@ -34,7 +34,7 @@
 | Release | GitHub 上 `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 四个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.61 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
-| 最近提交 | `200ee36` 启用 GitHub Pages 并在 README 加入站点链接 |
+| 最近提交 | 见 `git log --oneline -1`；最近一次发版提交为 `ba7f95b`（v1.3.0 文档口径修正）。**不要在这里写死 SHA**，每提交一次就过期 |
 | 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs`，状态 `built` |
 | 站点语言 | `/` 中文，`/en/` 英文 |
 | 提交身份 | `InventoryLedger Bot <125116742+Levanll@users.noreply.github.com>` |
@@ -703,12 +703,14 @@ git filter-branch -f --env-filter "export GIT_AUTHOR_NAME='X'; export GIT_AUTHOR
 
 ```powershell
 cd "D:\Documents\deepseek-harness\default-workspace\inventory-android"
-git log --oneline -3          # 确认在 200ee36 附近
+git log --oneline -3          # 看最近三个提交，确认在 main 上
 git status                    # 确认工作区干净
 git config user.name          # 应为 InventoryLedger Bot
 Get-ChildItem app\src\main\java\cn\levanll\inventory -Recurse -Filter *.kt | Measure-Object
-# 应该是 25 个文件
+# 应该是 26 个文件（v1.3.0 起；新增文件时同步这个数字）
 ```
+
+**不要靠 SHA 核对起点**：每次提交都会让它过期，用 `git log` 看提交标题判断即可。
 
 然后读 `docs/设计方案.md` 和本文件的第十二节（折叠与滚动条），再动手。
 
