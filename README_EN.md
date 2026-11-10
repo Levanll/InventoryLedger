@@ -60,7 +60,7 @@ A notes app can't do categories. A professional WMS is far too heavy.
 
 ### 1. Download
 
-Get `InventoryLedger-1.3.0.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
+Get `InventoryLedger-1.3.1.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
 
 > Android will warn about installing from an unknown source. Allow it for your file manager or browser — this is the normal side-loading flow.
 

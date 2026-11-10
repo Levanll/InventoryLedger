@@ -1,7 +1,7 @@
 # HANDOFF — 项目交接
 
 > 给接手这个项目的下一个 AI 会话 / 开发者。读完这一份就能继续干活，不必翻历史对话。
-> 最后更新：2026-11-10，对应 v1.3.0。
+> 最后更新：2026-11-10，对应 v1.3.1。
 
 ---
 
@@ -30,8 +30,8 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.3.0**（versionCode 4） |
-| Release | GitHub 上 `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 四个，都有 APK，**全部为中英对照** |
+| 版本 | **v1.3.1**（versionCode 5） |
+| Release | GitHub 上 `v1.3.1` / `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 五个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.61 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
 | 最近提交 | 见 `git log --oneline -1`；最近一次发版提交为 `ba7f95b`（v1.3.0 文档口径修正）。**不要在这里写死 SHA**，每提交一次就过期 |
@@ -707,7 +707,7 @@ git log --oneline -3          # 看最近三个提交，确认在 main 上
 git status                    # 确认工作区干净
 git config user.name          # 应为 InventoryLedger Bot
 Get-ChildItem app\src\main\java\cn\levanll\inventory -Recurse -Filter *.kt | Measure-Object
-# 应该是 26 个文件（v1.3.0 起；新增文件时同步这个数字）
+# 应该是 26 个文件（v1.3.1 起；新增文件时同步这个数字）
 ```
 
 **不要靠 SHA 核对起点**：每次提交都会让它过期，用 `git log` 看提交标题判断即可。
