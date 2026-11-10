@@ -14,11 +14,15 @@
 - 语言：Kotlin + Jetpack Compose，全离线，无账号无云同步
 - 目标用户：个人 / 家庭 / 小店的库存记录
 
-**它和同类应用的三点差异**（不要做成普通库存 App）：
+**它和同类应用的三点定位差异**（不要做成普通库存 App）：
 
 1. **三级分类**（服装 → 上装 → T恤），且列表必须按分类分组
 2. **保质期**可选开启，列表内按剩余天数排序
 3. **中英双语**，运行时切换
+
+> 这三条是「产品定位」层面的差异，与 README 卖点表（11 项，含扫码、自学习、
+> 撤销、统计等能力）和站点首屏卡片（4 张，含「已用完」）不是一个口径。
+> 改动时不要互相套数字 —— 定位讲的是「为什么做这个 App」，卖点讲的是「有什么功能」。
 
 ---
 
@@ -136,8 +140,12 @@ $adb = "F:\android-dev\sdk\platform-tools\adb.exe"
 | 脚本 | 用途 |
 |---|---|
 | `scripts/make_icon.py` | 生成应用图标。纯 Python 写 PNG，**不依赖 Pillow**。改几何/配色后重跑即可 |
-| `scripts/uihelp.py` | 按文字定位元素并点击（`tap "知道了"` / `find "EN"` / `texts` / `shot 目录 文件名`）。**避免靠记忆坐标点击** |
+| `scripts/make-banner.ps1` | 生成 README 与站点共用的首图（1280×420） |
+| `scripts/uihelp.py` | 按文字定位元素并点击（`tap "知道了"` / `find "EN"` / `texts` / `shot 目录 文件名`）。**避免靠记忆坐标点击**。设备序列号自动探测，多台时用 `ADB_SERIAL` 指定 |
 | `scripts/shoot.py` | 抓图并裁掉状态栏/导航栏 |
+| `scripts/seed_demo.py` | 灌演示数据用于站点截图。设备无 sqlite3，走「base64 拉库 → 本地改 → dd 推回」，需先装 debug 包 |
+| `scripts/create_release.py` | 创建 GitHub Release 并上传 APK。中英对照描述，UTF-8 字节发送 |
+| `scripts/update_releases.py` | 批量更新既有 Release 的描述文案 |
 
 ---
 
@@ -227,7 +235,7 @@ CategoryNames.ofPath("服装 / 上装")   // 路径整体翻译
 UnitNames.of("件")                   // 单位 → pcs
 ```
 
-### 三条重要约定
+### 四条重要约定
 
 | 属于 | 处理 |
 |---|---|
@@ -239,6 +247,9 @@ UnitNames.of("件")                   // 单位 → pcs
 **单位为什么存中文**：`Constants.stepOfUnit()` 按中文判定步进（"克"/"毫升" 走 10，其余走 1）。改成英文存库会让这个判定和历史数据全部失配。
 
 **用户数据为什么不翻译**：机器翻译会把 "Milk" 变成"牛奶"，用户按英文搜反而搜不到。保持原样是唯一正确的选择。
+
+**第四类容易漏：落库的备注文案**（`stock_record.note`）既不是纯界面文案、也不该翻成用户语言后存死。
+约定是存稳定的英文键，显示时经 `RecordNotes.of()` 翻译，详见第十二·五节。
 
 ### 日期也要本地化
 
@@ -338,9 +349,10 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 | `docs/index.html` | **产品站点首页（中文）**，Pages 从 `/docs` 发布 |
 | `docs/en/index.html` | 产品站点英文页 |
 | `docs/style.css` | 站点样式（深色，配色取自应用主色） |
-| `docs/images/zh/*.png` | 中文截图 8 张 |
-| `docs/images/en/*.png` | 英文截图 8 张 |
+| `docs/images/zh/*.png` | 中文截图 9 张 |
+| `docs/images/en/*.png` | 英文截图 9 张 |
 | `docs/images/hero-banner-{zh,en}.png` | README 与站点共用的首图 |
+| `notes/v*.md` | 各版本的 Release 描述原文（中英对照），`create_release.py` 的输入 |
 
 **文档必须与代码一致。** 曾发现 README 写"4 张核心表"实际 6 张、"7 张表实体"实际 6 张、引用不存在的图片、声称"零额外依赖"却引入了从未使用的 `zxing-android-embedded`。改代码后顺手核对文档。
 
