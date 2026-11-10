@@ -30,9 +30,18 @@
 | Release | GitHub 上 `v1.2.0` / `v1.1.0` / `v1.0.0` 三个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.60 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
-| 最近提交 | `defaa10` 修复悬停放大被裁剪，放大改为 1.5 倍 |
-| 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs` 目录 |
+| 最近提交 | `200ee36` 启用 GitHub Pages 并在 README 加入站点链接 |
+| 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs`，状态 `built` |
 | 站点语言 | `/` 中文，`/en/` 英文 |
+| 提交身份 | `InventoryLedger Bot <125116742+Levanll@users.noreply.github.com>` |
+
+### 仓库 About 配置（已设置）
+
+| 字段 | 值 |
+|---|---|
+| Description | 中文在前、`｜` 分隔、英文在后，与 LanPulse 同构 |
+| Website | `https://levanll.github.io/InventoryLedger/` |
+| Topics | 16 个：android, kotlin, jetpack-compose, material-design, room, ksp, barcode-scanner, zxing, camerax, inventory-management, expiry-tracking, offline-first, i18n, bilingual, harmonyos, apk |
 
 ### 已验证可用（真机实测）
 
@@ -557,6 +566,33 @@ Move-Item $oldDir $newDir
 
 **标准：在执行任何递归删除前，必须打印解析后的绝对路径和目录内容，确认是目标对象再删。优先移动到归档而不是删除。**
 
+### 提交身份与历史重写
+
+仓库的作者/提交者身份统一为 `InventoryLedger Bot <125116742+Levanll@users.noreply.github.com>`。
+
+**为什么用 noreply 邮箱**：GitHub 的 noreply 格式 `{用户id}+{登录名}@users.noreply.github.com`
+能让提交正确关联到账号（头像、贡献图都正常），同时不暴露真实邮箱。
+
+**仓库级身份已设置**，新提交不会再变成别的名字：
+
+```powershell
+git config user.name  "InventoryLedger Bot"
+git config user.email "125116742+Levanll@users.noreply.github.com"
+```
+
+**已做过的历史重写**（2026-11-10）：11 个提交原本是 `DSH <local@dsh>`，用 `filter-branch` 全部改写后强制推送。
+连带被改写的 `v1.0.0` 标签也做了 force push，事后清理了 `refs/original`。
+
+**踩坑：`filter-branch --env-filter` 在 PowerShell 里传 here-string 会被拆行**，报 `fatal: bad revision 'Bot`。
+正确做法是把 export 语句写成单行、用分号分隔：
+
+```powershell
+git filter-branch -f --env-filter "export GIT_AUTHOR_NAME='X'; export GIT_AUTHOR_EMAIL='Y'; export GIT_COMMITTER_NAME='X'; export GIT_COMMITTER_EMAIL='Y'" -- --all
+```
+
+**注意**：`filter-branch` 会改写所有引用的提交 hash，必须 `--force` 推送，且会让所有已 clone 的副本失效。
+只在确实需要时做，且做完要确认远端分支与标签都已更新。
+
 ### 其他值得记的
 
 - 用 PowerShell 的 `System.Drawing` 画图会遇到数组运算语义、`New-Object` 构造器歧义、UTF-8 BOM 三个坑。几何绘制改用 Python 纯计算
@@ -568,8 +604,12 @@ Move-Item $oldDir $newDir
 - 查端口占用用 `Get-CimInstance Win32_Process` 匹配 `CommandLine`，`Get-NetTCPConnection` 不一定能拿到
 - 写 PNG 时 `IHDR` 的颜色类型必须与每行字节匹配：RGB 用类型 2（3 字节/像素），RGBA 用类型 6（4 字节/像素），不匹配会生成打不开的文件
 - PowerShell 读取 PNG 的字节偏移容易算错（IHDR 实际从第 16 字节开始），验证图片尺寸优先用 Python 解析
+- **启用 Pages 用 `Invoke-WebRequest -UseBasicParsing`**，body 显式转 UTF-8 字节。
+  用 `Invoke-RestMethod` 直接传对象会返回 400
+- PowerShell 的 `.Replace()` 对含全角标点的长串容易静默不命中，替换后**必须回读文件确认**，
+  不能只看命令输出
 
-### 两次判断错误（不是环境问题，是我自己的问题）
+### 三次判断错误（不是环境问题，是我自己的问题）
 
 **1. 误判 LanPulse 的 Release 没有英文**
 
@@ -585,14 +625,23 @@ Move-Item $oldDir $newDir
 
 **教训：本地静态站点验证时，URL 加 `?v=N` 破缓存，或先确认 `document.documentElement.lang` 与预期一致，再判断内容对错。**
 
+**3. 声称 Pages 需要用户手动启用**
+
+第一次调 `POST /repos/{owner}/{repo}/pages` 返回 400，我判断为 token 权限不足，
+让用户去网页手动操作。实际上换用 `Invoke-WebRequest -UseBasicParsing` 加 UTF-8 字节后一次就成功了（201）。
+
+**教训：API 返回 400 是「请求有问题」，401/403 才是「权限有问题」。**
+诊断前先分清状态码含义，不要把自己的请求格式错误归因给用户权限。
+
 ---
 
 ## 十六、给下一个会话的第一件事
 
 ```powershell
 cd "D:\Documents\deepseek-harness\default-workspace\inventory-android"
-git log --oneline -3          # 确认在 defaa10 附近
+git log --oneline -3          # 确认在 200ee36 附近
 git status                    # 确认工作区干净
+git config user.name          # 应为 InventoryLedger Bot
 Get-ChildItem app\src\main\java\cn\levanll\inventory -Recurse -Filter *.kt | Measure-Object
 # 应该是 25 个文件
 ```
