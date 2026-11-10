@@ -34,7 +34,7 @@
 | Release | GitHub 上 `v1.3.1` / `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 五个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.61 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
-| 最近提交 | 见 `git log --oneline -1`；最近一次发版提交为 `ba7f95b`（v1.3.0 文档口径修正）。**不要在这里写死 SHA**，每提交一次就过期 |
+| 最近提交 | 见 `git log --oneline -1`；v1.3.1 的发版提交为 `e1cfe4d`。**不要在这里写死 SHA**，每提交一次就过期 |
 | 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs`，状态 `built` |
 | 站点语言 | `/` 中文，`/en/` 英文 |
 | 提交身份 | `InventoryLedger Bot <125116742+Levanll@users.noreply.github.com>` |
@@ -60,6 +60,9 @@
 - 从 v1.0.0 覆盖升级，数据完整保留
 - **两级分类折叠**：一级与二级均可独立折叠，商品行跟随二级缩进
 - **滚动指示条**：可拖动、按下变粗、能拖到底
+- **「已用完」分区**（v1.3.0）：归零保留后出现在列表底部，展开可恢复 / 删除
+- **空库存边界**（v1.3.1）：主列表为空但已用完有内容时，分区仍正常显示（这条 1.3.0 有缺陷，1.3.1 修复）
+- **覆盖升级链**：v1.0.0→v1.2.0、v1.2.0→v1.3.0、v1.3.0→v1.3.1 均实测通过
 
 在 **HUAWEI HBN-AL80 / HarmonyOS 4.2（Android 12 底座，无 GMS）** 上验证过扫码能读出 `6972046811374`。**这条是关键**：证明不依赖 Google 服务。
 
@@ -68,6 +71,7 @@
 - **扫码功能在荣耀 Android 17 上未实测**（只验证了页面能打开，没在真机前扫过条码）。下一步若要动扫码代码，先在两台设备都测一遍
 - 分类名英文映射覆盖 80 个预置分类，**用户自建分类不翻译**（有意为之，见「设计决策」）
 - 条码查询对国产 69 码覆盖约 60–70%
+- **v1.3.1 的条码缓存失效修复未真机验证**：需实体条码 + 扫码 + 触发改名冲突 + 重扫，设备上没有可扫的实物。正确性依据是代码路径核对（`remember()` 末尾原本有 `cache.remove`，重构后被绕过，现已显式补上）
 - 站点未在移动端真机验证（仅桌面 Chrome 1280 / 2560 宽）
 
 ---
@@ -129,11 +133,13 @@ DN:      CN=Levanll, OU=Personal, O=Levanll, L=Unknown, ST=Unknown, C=CN
 ```powershell
 $adb = "F:\android-dev\sdk\platform-tools\adb.exe"
 & $adb devices
-# 当前: AS6V026716000310  HONOR BKQ-AN00 / Android 17
-#       (原设备 33Z0224430004545 HUAWEI HBN-AL80 / HarmonyOS 4.2，可能随时接入)
+# 当前: AS6V026716000310  HONOR BKQ-AN00 / Android 17，1256×2760 @560dpi
+# 另一台: FMR0223830034932  HUAWEI ALN-AL00 / Android 12，1260×2720 @520dpi
+# （两台都曾接入；同时接多台时 uihelp.py 需设环境变量 ADB_SERIAL 指定）
 ```
 
-屏幕 1256×2760 @560dpi。**截图要裁掉状态栏**：`0~119px` 是状态栏，`2682~2760px` 是导航栏。
+**截图裁切不要写死像素**：不同机型状态栏高度不同（1256 宽约 119px，1260 宽约 130px）。
+`uihelp.py` 已改为按当前设备分辨率推算，不要再手写 `0~119px` 这类固定值。
 
 ### 辅助脚本
 
@@ -341,7 +347,7 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 |---|---|
 | `README.md` | 中文主 README，含界面预览 |
 | `README_EN.md` | 英文 README，结构与中文对称 |
-| `CHANGELOG.md` | 按版本记录，1.3.0 在最上 |
+| `CHANGELOG.md` | 按版本记录，1.3.1 在最上 |
 | `SECURITY.md` | 漏洞报告渠道 |
 | `HANDOFF.md` | 本文件 |
 | `docs/设计方案.md` | 数据模型、事务纪律、分类机制、i18n、迁移链 |
@@ -569,7 +575,55 @@ v1.3.0 修正后，`mapping.txt` 里这三个类保留原名，而未加 keep �
 
 ---
 
+## 十二·六、v1.3.1：发布后审查修了什么
+
+v1.3.0 的 APK 发出后做了一次代码审查，发现 6 个问题。**其中 2 个是真 bug，
+且都出在本版本刚改过的代码里** —— 值得单独记下来，因为它们的成因相同：
+修一个问题时带出了另一个。
+
+### 空库存时「已用完」分区不渲染（最严重）
+
+`InventoryScreen` 的空状态判断写的是 `state.items.isEmpty()`，而「已用完」分区
+写在 `else` 分支的 `LazyColumn` 里。于是：把**最后一个**商品减到 0、选「保留记录」，
+主列表空了 → 走 `EmptyState` → 分区连同「恢复 / 删除」入口一起消失，
+界面显示「还没有商品」。
+
+**这正是 v1.3.0 要解决的问题本身**，只是在空库存这个边界上仍然存在。
+改为 `items.isEmpty() && usedUp.isEmpty()` 才算真正空库存。
+
+**教训**：新增一个「附加分区」时，要检查所有会提前 return 的分支
+（空状态 / loading / 错误态），确认附加分区在每条分支上都有落点。
+
+### 条码改名后未失效内存缓存
+
+v1.3.0 把写操作收进事务时，把 `barcodeLookup.remember(...)` 换成了
+`inv.renameItemAndMemo(...)`。但 `remember()` 末尾有一句 `cache.remove(code)`，
+新方法只写表、不清缓存。结果：同一会话内先扫过该条码、再改名、再扫，
+`lookup()` 会命中旧 `ProductInfo` 把旧名字填回表单。
+
+修法：在 `BarcodeLookupService` 加 `invalidate(barcode)`，改名成功后调用。
+
+**教训**：把逻辑从 A 挪到 B 时，要检查 A 除了「主职责」之外还顺手做了什么
+（清缓存、重置状态、裁剪队列）。这类附带行为最容易在搬运中丢失。
+
+### 其余 4 项（工程侧，不影响用户）
+
+- `scripts/create_release.py` 重跑时 DELETE 返回 204 无 body，`json.loads(b"")`
+  抛的 `JSONDecodeError` 不是 `HTTPError`，不被捕获 → 直接崩。空 body 要单独处理。
+- 该脚本 docstring 的示例写了不存在的 `--body-file`。
+- 站点滚动带副本 figure 漏了 `aria-hidden`，屏幕阅读器会把同一张图读两遍。
+- `scripts/uihelp.py` 的临时文件写死到 `test-artifacts/`，该目录归档后工具直接崩溃。
+
+### 为什么发 1.3.1 而不是重发 1.3.0
+
+APK 已发出，重传同一 tag 的资产会破坏「tag 对应一份确定产物」的语义，
+且 versionCode 未变，已装用户不会收到更新提示。发小版本是唯一干净的做法。
+
+**发版前自查**：改动涉及「列表 / 分区的显隐」与「跨层搬运逻辑」时，
+对照上面两条教训各检查一遍。
+
 ---
+
 ## 十三、设计决策（不要轻易推翻）
 
 | 决策 | 理由 |
@@ -605,13 +659,13 @@ v1.3.0 修正后，`mapping.txt` 里这三个类保留原名，而未加 keep �
 
 ### 技术债 / 可改进处
 
-- `InboundScreen.kt` 897 行，是最大的单文件，可拆分
-- `MainViewModel.kt` 992 行，职责偏多
+- `InboundScreen.kt` 899 行，是最大的单文件，可拆分
+- `MainViewModel.kt` 996 行，职责偏多
+- `InventoryScreen.kt` 940 行
 - 扫码功能尚未在荣耀设备实测
 - 站点未做移动端真机验证，窄屏下轮播与表格的换行未确认
-- `test-artifacts/` 约 150 MB，是测试中间产物，已在 gitignore；可清理但不影响功能
-- `docs/设计方案.md` 与 `docs/页面规格.md` 尚未补 1.2.0 的折叠与滚动条设计细节
-  （HANDOFF 第十二节有实现说明，但设计文档还是空的）
+- `test-artifacts/` 已于 2026-11-10 归档到 `F:\deepseek-harness\_archive\20261110-test-artifacts\`（164.7 MB），仓库内不再存在
+- 设计方案与页面规格已补齐 1.2.0 / 1.3.0 的实现细节，后续改功能时同步维护
 
 ---
 
