@@ -1,7 +1,9 @@
 """设备操作助手：按文字定位元素并点击，抓取裁切后的截图。
 
-裁切偏移（状态栏 119px、导航栏起点 2682px）只作用于输出图片，
+裁切偏移（状态栏、导航栏）按当前设备分辨率自动推算，只作用于输出图片；
 点击一律使用 uiautomator 给出的真实设备坐标，避免两套坐标系混用。
+
+设备：默认取当前唯一连接的设备；接了多台时用环境变量 ADB_SERIAL 指定。
 
 用法：
     python scripts/uihelp.py tap "知道了"
@@ -13,17 +15,53 @@ import os
 import re
 import subprocess
 import sys
-import time
-import xml.etree.ElementTree as ET
 
 ADB = r"F:\android-dev\sdk\platform-tools\adb.exe"
-SERIAL = "AS6V026716000310"
-STATUS_H = 119
-NAV_START = 2682
 LOCAL_TMP = os.path.join(
     r"D:\Documents\deepseek-harness\default-workspace\inventory-android\test-artifacts",
     "_ui.xml",
 )
+
+
+def detect_serial():
+    """当前连接的唯一设备；多台时要求显式指定，避免操作到错误的机器。"""
+    env = os.environ.get("ADB_SERIAL", "").strip()
+    if env:
+        return env
+    out = subprocess.run([ADB, "devices"], capture_output=True, text=True).stdout
+    serials = [
+        line.split()[0]
+        for line in out.splitlines()[1:]
+        if line.strip() and line.split()[-1] == "device"
+    ]
+    if not serials:
+        sys.exit("没有已连接的设备")
+    if len(serials) > 1:
+        sys.exit(f"连接了多台设备 {serials}，请设置环境变量 ADB_SERIAL 指定")
+    return serials[0]
+
+
+SERIAL = detect_serial()
+
+
+def screen_geometry():
+    """返回 (宽, 高)，用于推算状态栏与导航栏的裁切高度。"""
+    out = subprocess.run(
+        [ADB, "-s", SERIAL, "shell", "wm", "size"],
+        capture_output=True, text=True,
+    ).stdout
+    m = re.search(r"(\d+)x(\d+)", out)
+    if not m:
+        return 1080, 1920
+    return int(m.group(1)), int(m.group(2))
+
+
+SCREEN_W, SCREEN_H = screen_geometry()
+# 状态栏高度按屏幕比例推算：1080p 约 72px，1260 宽约 119px。
+# 导航栏同理，取其高度的约 3%。
+STATUS_H = round(SCREEN_W * 119 / 1256)
+NAV_START = SCREEN_H - round(SCREEN_H * 78 / 2760)
+
 
 
 def adb(*args, timeout=60):

@@ -32,7 +32,7 @@
 
 <section class="hero">
   <div class="wrap">
-    <div class="hero-badge">v1.2.0 · Android 7.0+ · 2.6 MB</div>
+    <div class="hero-badge">v1.3.0 · Android 7.0+ · 2.6 MB</div>
     <h1>Know what you have,<br>and <em>what to use first</em></h1>
     <p class="lead">
       Scan a barcode or type it in, adjust quantities right in the list, and expiring
@@ -42,7 +42,7 @@
     <div class="hero-actions">
       <a class="btn btn-primary" href="https://github.com/Levanll/InventoryLedger/releases/latest">
         Download APK
-        <span class="btn-sub">InventoryLedger-1.2.0.apk</span>
+        <span class="btn-sub">InventoryLedger-1.3.0.apk</span>
       </a>
       <a class="btn btn-ghost" href="https://github.com/Levanll/InventoryLedger">
         View source
@@ -85,6 +85,14 @@
         <p>
           A local Room database. No account, no cloud sync, no analytics. The network is used only
           for barcode product lookup; if it fails or you are offline, everything else still works.
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="card-ico">4</span> Used-up items have a home</h3>
+        <p>
+          At zero you can delete the item or keep its record. Kept items collect in a collapsed
+          "Used up" section at the bottom of the list, ready to restore or delete for good — they
+          neither vanish without a trace nor clutter the main list.
         </p>
       </div>
     </div>
@@ -145,40 +153,48 @@
           <figcaption>Category management · full CRUD</figcaption>
         </figure>
         <figure class="shot">
+          <img src="../images/en/usedup.png" alt="Used-up section · restore or delete zeroed items" loading="lazy">
+          <figcaption>Used up · zeroed items still have a home</figcaption>
+        </figure>
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/list.png" alt="dup Inventory list · grouped, expiry first within group" loading="lazy">
           <figcaption>Inventory list · grouped, expiry first within group</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/list-groups.png" alt="dup Grouping · T-Shirts → Shirts → Dairy" loading="lazy">
           <figcaption>Grouping · T-Shirts → Shirts → Dairy</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/expired.png" alt="dup Expired items on launch" loading="lazy">
           <figcaption>Expired items on launch</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/picker.png" alt="dup Three-level picker · indentation shows depth" loading="lazy">
           <figcaption>Three-level picker · indentation shows depth</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/expiry.png" alt="dup Expiry · computed live" loading="lazy">
           <figcaption>Expiry · computed live</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/stats.png" alt="dup Monthly stock and usage" loading="lazy">
           <figcaption>Monthly stock and usage</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/inbound.png" alt="dup Add stock · scan entry and fields" loading="lazy">
           <figcaption>Add stock · scan entry and fields</figcaption>
         </figure>
-        <figure class="shot">
+        <figure class="shot" aria-hidden="true">
           <img src="../images/en/category.png" alt="dup Category management · full CRUD" loading="lazy">
           <figcaption>Category management · full CRUD</figcaption>
         </figure>
+        <figure class="shot">
+          <img src="../images/en/usedup.png" alt="Used-up section · restore or delete zeroed items" loading="lazy">
+          <figcaption>Used up · zeroed items still have a home</figcaption>
+        </figure>
       </div>
     </div>
-    <p class="marquee-hint">Hover to pause; scroll or drag horizontally to browse</p>
+    <p class="marquee-hint">Hover to pause; the screenshots scroll horizontally on their own</p>
   </div>
 </section>
 
@@ -215,8 +231,8 @@
     <div class="grid-2">
       <div>
         <table class="spec-table">
-          <tr><th>Version</th><td>1.2.0 (versionCode 3)</td></tr>
-          <tr><th>Size</th><td>2.60 MB</td></tr>
+          <tr><th>Version</th><td>1.3.0 (versionCode 4)</td></tr>
+          <tr><th>Size</th><td>2.61 MB</td></tr>
           <tr><th>Min SDK</th><td>Android 7.0 (API 24)</td></tr>
           <tr><th>Signature</th><td>RSA 2048, v1 + v2 + v3</td></tr>
         </table>
@@ -228,12 +244,12 @@
       </div>
       <div>
         <pre><code># Install with adb
-adb install -r InventoryLedger-1.2.0.apk
+adb install -r InventoryLedger-1.3.0.apk
 
 # Upgrading from an older build
 # Same signing key, in-place install, data preserved</code></pre>
         <p style="color:var(--text-faint);font-size:0.88rem">
-          Verified: installing v1.2.0 over v1.0.0 keeps inventory and records intact.
+          Verified: upgrading from v1.0.0 all the way to v1.3.0 keeps inventory and records intact.
         </p>
       </div>
     </div>

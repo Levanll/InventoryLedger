@@ -7,7 +7,7 @@
 [![Compose](https://img.shields.io/badge/Compose-BOM%202024.06-4285F4?style=flat-square&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Room-2.6.1-3DDC84?style=flat-square)](https://developer.android.com/training/data-storage/room)
 [![minSdk](https://img.shields.io/badge/minSdk-24-3DDC84?style=flat-square&logo=android)](https://developer.android.com/about/versions/nougat)
-[![APK](https://img.shields.io/badge/APK-2.60%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
+[![APK](https://img.shields.io/badge/APK-2.61%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
 [![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%E6%96%87%20%7C%20English-00E5A0?style=flat-square)](#)
 
 [中文](README.md) ｜ **English** ｜ **[Official site](https://levanll.github.io/InventoryLedger/en/)** ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
@@ -48,7 +48,8 @@ A notes app can't do categories. A professional WMS is far too heavy.
 | 📷 | **Barcode scan + product lookup** | Pure-Java ZXing decoding (no GMS / ML Kit). Lookup results appear as a **suggestion card** — nothing is written until you tap "Use" | Third-party product data can be wrong or stale; writing it straight into the form turns someone else's error into your inventory fact |
 | 🧠 | **Barcode self-learning** | Once you type or accept a product, the app remembers barcode → name/brand/spec/category; the next scan fills everything in | Public barcode databases are thin outside the US/EU, but anything you entered once you never enter again |
 | ↔️ | **Inline quantity stepper** | Tap `− 1 ＋` directly on each row — no detail screen. Reaching zero prompts to delete | The most frequent actions are "used one" and "bought a few"; every extra screen transition is friction |
-| ↩️ | **Everything is undoable** | Records are append-only; undo writes a reversing entry and never mutates history. One-tap undo within seconds | You need to be able to take a mistake back — and to see what changed, when |
+| 🗃 | **Used-up section** | Items kept at zero collect in a collapsed section at the bottom of the list, where they can be restored or deleted | Used-up things should neither vanish without a trace nor occupy the main list — there needs to be a middle place |
+| ↩️ | **Everything is undoable** | Records are append-only; undo writes a reversing entry and never mutates history. One-tap undo | You need to be able to take a mistake back — and to see what changed, when |
 | 📊 | **Monthly stock & usage** | Aggregated per calendar month, switch months, drill into per-item transactions; usage view includes month-over-month change | "How much did I actually use this month" is the only basis for restocking decisions |
 | 🌐 | **Chinese / English, switchable** | Both the Inventory and Stats headers carry an `EN` / `中文` toggle. Takes effect immediately, no restart, and the choice is remembered | Labels, category names, units and date formats all follow — not just the page title |
 | 📴 | **No account, no cloud** | Everything is in a local Room database. Network is used only for barcode lookup; failure affects nothing | Household and small-shop inventory has no reason to live on someone else's server |
@@ -59,7 +60,7 @@ A notes app can't do categories. A professional WMS is far too heavy.
 
 ### 1. Download
 
-Get `InventoryLedger-1.2.0.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
+Get `InventoryLedger-1.3.0.apk` from [Releases](https://github.com/Levanll/InventoryLedger/releases/latest).
 
 > Android will warn about installing from an unknown source. Allow it for your file manager or browser — this is the normal side-loading flow.
 
@@ -112,16 +113,21 @@ Adjust quantities with `−/+` on each row. Reaching zero asks whether to delete
 | ![stats](docs/images/en/stats.png) | ![category](docs/images/en/category.png) |
 | *Switch months, tap a row for details* | *＋ adds a child, ✕ deletes, three levels max* |
 
+| Used up · zeroed items still have a home |
+|---|
+| ![used up](docs/images/en/usedup.png) |
+| *Items kept at zero collect here and can be restored or deleted at any time* |
+
 ---
 
 ## Capabilities
 
-**80 preset categories · 83 recognition rules · 6 tables · 3 record types**
+**80 preset categories · 83 recognition rules · 6 tables · 2 record types**
 
-- **Three-level category tree**: a recursive CTE builds a path string (`002Clothing/001Tops/001T-Shirts`) whose lexical order equals pre-order DFS — avoiding the layer scrambling that `ORDER BY sort` produces
+- **Three-level category tree**: a recursive CTE builds a path string (`00010Clothing/00011Tops/00111T-Shirts`) whose lexical order equals pre-order DFS — avoiding the layer scrambling that `ORDER BY sort` produces
 - **Dynamic category chips**: rendered from SQL stats for `quantity > 0` at `depth = 1` only; nothing is hard-coded in the UI
 - **Inline quantity adjustment**: writes a `reason='MANUAL'` record, sharing the same accounting as everything else
-- **Soft delete at zero**: quantity 0 disappears from the list but the row is retained, so history and monthly stats still resolve
+- **Zeroing never deletes**: at quantity 0 the item leaves the main list but the row is kept; choosing "Keep record" files it under the **Used up** section, where it can be restored or deleted, and history and monthly stats always resolve
 - **Expiry computed, not stored**: expiry is derived from `production_date + shelf_life_days` so editing the shelf life can never desynchronise a stored expiry timestamp
 - **Three-tier barcode source**: local self-learned cache → existing items → network (Open Food Facts / go-upc), local first
 - **Monthly aggregation**: half-open interval `[month start, next month start)`; undone records count (undoing a withdrawal cancels the usage)
@@ -232,7 +238,7 @@ Notable spots:
 | Database | Room 2.6.1 (SQLite) | Compile-time SQL validation, recursive CTE, migrations |
 | Scanning | ZXing 3.5.3 + CameraX 1.3.4 | **No GMS / ML Kit** — works on HarmonyOS and other devices without Google services |
 | Build | AGP 8.5.2 + Gradle 8.9 + KSP | KSP instead of KAPT |
-| Minification | R8 (`isMinifyEnabled = true`) | 17.67 MB → **2.60 MB** |
+| Minification | R8 (`isMinifyEnabled = true`) | 17.67 MB → **2.61 MB** |
 | Signing | v1 + v2 + v3, RSA 2048 | Android 7.0 through 14 |
 
 **No third-party runtime dependencies** beyond AndroidX and ZXing.

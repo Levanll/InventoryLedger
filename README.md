@@ -7,7 +7,7 @@
 [![Compose](https://img.shields.io/badge/Compose-BOM%202024.06-4285F4?style=flat-square&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Room-2.6.1-3DDC84?style=flat-square)](https://developer.android.com/training/data-storage/room)
 [![minSdk](https://img.shields.io/badge/minSdk-24-3DDC84?style=flat-square&logo=android)](https://developer.android.com/about/versions/nougat)
-[![APK](https://img.shields.io/badge/APK-2.60%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
+[![APK](https://img.shields.io/badge/APK-2.61%20MB-success?style=flat-square)](https://github.com/Levanll/InventoryLedger/releases/latest)
 [![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%E6%96%87%20%7C%20English-00E5A0?style=flat-square)](#)
 
 **中文** ｜ [English](README_EN.md) ｜ **[官方网站](https://levanll.github.io/InventoryLedger/)** ｜ [Releases](https://github.com/Levanll/InventoryLedger/releases)
@@ -34,7 +34,8 @@
 | 📷 | **扫码 + 商品信息查询** | ZXing 纯 Java 解码（不依赖 GMS/ML Kit）。查到商品信息作为**建议卡片**展示，用户点「采用」才写入 | 第三方商品库数据可能错、可能过时，直接写进表单等于把错误变成用户的事实 |
 | 🧠 | **条码自学习** | 用户手填或采用建议后，记住「条码 → 名称/品牌/规格/分类」；下次扫同一商品直接带出 | 公开条码库对国产商品覆盖差，但用户自己填过一次的，就永远不用再填 |
 | ↔️ | **数量就地增减** | 列表每行右侧直接 `− 1 ＋`，不必进入详情页；减到 0 弹窗询问是否删除 | 最高频的动作是「用掉一个」和「补了几个」，多一次跳转就是多一次摩擦 |
-| ↩️ | **一切可撤销** | 流水只增不删；撤销写入反向补偿记录，历史行数值永不修改。5 秒内可一键撤销 | 改错了要能退回去，且要能查得到「谁在什么时候改了什么」 |
+| 🗃 | **已用完分区** | 归零时选「保留记录」的商品收进列表底部一个默认折叠的分区，展开可「恢复」或「删除」 | 用完的东西不该消失得无影无踪，也不该占着主列表；两者之间需要一个折中的位置 |
+| ↩️ | **一切可撤销** | 流水只增不删；撤销写入反向补偿记录，历史行数值永不修改。可一键撤销 | 改错了要能退回去，且要能查得到「谁在什么时候改了什么」 |
 | 📊 | **月度库存与消耗** | 按自然月聚合，可切换月份、下钻到单商品流水；消耗页带环比 | 「这个月到底用了多少」是复盘采购的唯一依据 |
 | 🌐 | **中英双语，随时切换** | 库存页与统计页右上角都有 `EN` / `中文` 按钮，点击即时生效，不用重启；选择会记住 | 界面文案、分类名、单位、日期格式全部跟随切换，不是只换标题 |
 | 📴 | **零账号零云同步** | 全部数据在本机 Room 数据库。联网仅用于条码查询，失败不影响任何功能 | 家庭与小店库存不需要上传到任何服务器 |
@@ -45,7 +46,7 @@
 
 ### 1. 下载安装
 
-到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.2.0.apk`。
+到 [Releases](https://github.com/Levanll/InventoryLedger/releases/latest) 下载 `InventoryLedger-1.3.0.apk`。
 
 > 安装时系统会提示「未知来源」，需要在设置里允许来自此来源的应用。这是侧载 APK 的正常流程。
 
@@ -98,16 +99,21 @@
 | ![统计](docs/images/zh/stats.png) | ![分类](docs/images/zh/category.png) |
 | *可按月切换，点行进明细* | *右侧 ＋ 建子类，✕ 删除，限三级* |
 
+| 已用完 · 归零后仍有去处 |
+|---|
+| ![已用完](docs/images/zh/usedup.png) |
+| *归零时选「保留记录」的商品收在这里，可随时恢复或删除* |
+
 ---
 
 ## 能力一览
 
-**80 个预置分类 · 83 条识别规则 · 6 张表 · 3 种流水类型**
+**80 个预置分类 · 83 条识别规则 · 6 张表 · 2 种流水类型**
 
-- **三级分类树**：递归 CTE 生成路径串排序（`002服装/001上装/001T恤`），字典序天然得到先序 DFS，避免 `ORDER BY sort` 导致层级错乱
+- **三级分类树**：递归 CTE 生成路径串排序（`00010服装/00011上装/00111T恤`），字典序天然得到先序 DFS，避免 `ORDER BY sort` 导致层级错乱
 - **动态分类条**：只渲染 `quantity > 0` 且 `depth = 1` 的分类，由 SQL 统计驱动，不在界面写死
 - **数量就地增减**：列表行内 `−/+`，写入 `reason='MANUAL'` 流水，与出库记录共享同一套统计口径
-- **归零软删**：数量为 0 不再显示，但数据保留，历史流水与月度统计仍可追溯
+- **归零不删商品**：数量为 0 后从主列表移出，但数据保留；选「保留记录」的商品收进「已用完」分区，可随时恢复或删除，历史流水与月度统计始终可追溯
 - **保质期现算**：到期时间不落库，由 `production_date + shelf_life_days` 实时计算，避免日期改了过期时间不跟着变
 - **条码三级数据源**：本地自学习库 → 已入库商品 → 联网（Open Food Facts / go-upc），本地优先
 - **月度聚合**：按 `[月初, 下月初)` 半开区间统计，撤销记录计入（撤销出库 = 消耗被抵消）
@@ -231,7 +237,7 @@ InventoryLedger/
 | 数据库 | Room 2.6.1（SQLite） | 编译期校验 SQL，支持递归 CTE 与迁移 |
 | 扫码 | ZXing 3.5.3 + CameraX 1.3.4 | **不依赖 GMS / ML Kit**，HarmonyOS 等无 Google 服务的设备也能用 |
 | 构建 | AGP 8.5.2 + Gradle 8.9 + KSP | KSP 替代 KAPT，编译更快 |
-| 混淆 | R8（`isMinifyEnabled = true`） | APK 从 17.67 MB 降至 **2.60 MB** |
+| 混淆 | R8（`isMinifyEnabled = true`） | APK 从 17.67 MB 降至 **2.61 MB** |
 | 签名 | v1 + v2 + v3，RSA 2048 | 兼容 Android 7.0 到 14 |
 
 **运行时零额外依赖**：除 AndroidX 与 ZXing 外无第三方库。
