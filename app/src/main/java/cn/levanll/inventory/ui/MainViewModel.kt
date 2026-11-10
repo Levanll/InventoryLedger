@@ -52,7 +52,17 @@ data class InventoryUiState(
      * 用「折叠集合」而不是「展开集合」：默认全部展开是符合直觉的初始状态，
      * 新出现的分类也默认展开；只有用户主动折叠的才进集合。
      */
-    val collapsedRoots: Set<Long> = emptySet()
+    val collapsedRoots: Set<Long> = emptySet(),
+    /**
+     * 「已用完」分区的商品：数量归零但用户选择保留的。
+     *
+     * 单独存放而不是混进 items：主列表是「现在有什么」，
+     * 已用完是「曾经有什么」。混在一起会把主列表撑长，
+     * 而完全不可见又让「保留记录」这个选项没有意义。
+     */
+    val usedUp: List<ItemWithCategory> = emptyList(),
+    /** 「已用完」分区是否展开，默认折叠，不打扰主列表 */
+    val usedUpExpanded: Boolean = false
 )
 
 /** 条码改名冲突：让用户决定这个条码从此关联谁 */
@@ -191,7 +201,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         inv.countLowStock(),
                         inv.totalQuantity(),
                         inv.countInStock(),
-                        inv.countExpiringSoon()
+                        inv.countExpiringSoon(),
+                        inv.listUsedUp(_inventory.value.keyword, _inventory.value.selectedCat)
                     )
                 }
                 // 关键：在赋值的那一刻重新读取最新状态，而不是用协程启动前的快照。
@@ -204,6 +215,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     totalQty = r.total,
                     inStockKinds = r.kinds,
                     expiringCount = r.expiring,
+                    usedUp = r.usedUp,
                     loading = false
                 )
             } catch (e: Exception) {
@@ -220,8 +232,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val low: Int,
         val total: Double,
         val kinds: Int,
-        val expiring: Int
+        val expiring: Int,
+        val usedUp: List<ItemWithCategory>
     )
+
+    /** 展开 / 折叠「已用完」分区 */
+    fun toggleUsedUp() {
+        _inventory.value = _inventory.value.copy(usedUpExpanded = !_inventory.value.usedUpExpanded)
+    }
+
+    /** 从「已用完」恢复入库 */
+    fun restoreUsedUp(itemId: Long, itemName: String, qty: Double = 1.0) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { inv.restoreUsedUp(itemId, qty) }
+                refreshInventory()
+                refreshStatsIfCurrentMonth()
+                _toast.value = I18n.s("已恢复「$itemName」", "Restored $itemName")
+            } catch (e: AppException) {
+                _toast.value = e.message
+            }
+        }
+    }
 
     fun setKeyword(kw: String) {
         _inventory.value = _inventory.value.copy(keyword = kw)
@@ -271,6 +303,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 refreshStatsIfCurrentMonth()
                 if (after <= 0.0 && delta < 0) {
                     onZero(item)
+                    // 归零后弹窗可能被「保留记录」关掉。此时商品应从主列表
+                    // 移到「已用完」分区 —— 但上面那次 refreshInventory 的查询
+                    // 早于本次写入，查不到它。补一次，让两个分区都到位。
+                    refreshInventory()
                 }
             } catch (e: AppException) {
                 _toast.value = e.message
@@ -526,19 +562,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val item = inv.getItem(c.oldItemId)
-                    if (item != null) {
-                        db.itemDao().update(
-                            item.copy(name = c.newName, updatedAt = System.currentTimeMillis())
-                        )
-                    }
-                    barcodeLookup.remember(
+                    inv.renameItemAndMemo(
+                        itemId = c.oldItemId,
+                        newName = c.newName,
                         barcode = c.barcode,
-                        name = c.newName,
-                        brand = null,
-                        spec = null,
-                        categoryId = _inbound.value.categoryId,
-                        source = "local"
+                        categoryId = _inbound.value.categoryId
                     )
                 }
                 _inbound.value = _inbound.value.copy(name = c.newName, nameConflict = null)
@@ -593,16 +621,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val q = if (_inbound.value.qty < st) st else _inbound.value.qty
         _inbound.value = _inbound.value.copy(unit = u, qty = q)
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                val d = db.categoryDao()
-                val key = Constants.MEMO_LAST_UNIT
-                val now = System.currentTimeMillis()
-                if (d.getMemo(key) == null) {
-                    d.insertMemo(cn.levanll.inventory.data.entity.FormMemoEntity(key, u, now))
-                } else {
-                    d.updateMemo(key, u, now)
-                }
-            }
+            withContext(Dispatchers.IO) { inv.saveLastUnit(u) }
         }
     }
 

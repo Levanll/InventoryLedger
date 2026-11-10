@@ -234,7 +234,10 @@ fun InventoryScreen(
                                 .fillMaxSize()
                                 .padding(start = 16.dp, end = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
+                            // 底部留白 = FAB 底边距 88 + FAB 高度 56 + 呼吸 8 = 152。
+                            // 原来是 96，只够让最后一项露出，但会被 FAB 压住右侧按钮
+                            // （「已用完」行的「删除」就点不到）。
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 152.dp)
                         ) {
                             groups.forEach { (rootName, subGroups) ->
                                 val allRows = subGroups.values.flatten()
@@ -298,13 +301,42 @@ fun InventoryScreen(
                                     }
                                 }
                             }
+
+                            // 「已用完」分区：数量归零但用户选择保留的商品。
+                            //
+                            // 放在主列表之后，默认折叠。这样「保留记录」有了可见的落点，
+                            // 又不把历史条目混进「现在有什么」的主视图。
+                            if (state.usedUp.isNotEmpty()) {
+                                item(key = "usedup_header") {
+                                    UsedUpHeader(
+                                        count = state.usedUp.size,
+                                        expanded = state.usedUpExpanded,
+                                        onToggle = { vm.toggleUsedUp() }
+                                    )
+                                }
+                                if (state.usedUpExpanded) {
+                                    items(state.usedUp, key = { "used_${it.id}" }) { item ->
+                                        Box(modifier = Modifier.padding(start = 14.dp)) {
+                                            UsedUpRow(
+                                                item = item,
+                                                onRestore = {
+                                                    vm.restoreUsedUp(item.id, item.name)
+                                                },
+                                                onDelete = {
+                                                    vm.deleteZeroItem(item.id, item.name)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // 滚动指示条：贴在列表右缘，不占布局宽度。
                         //
                         // 上沿对齐「最近」栏下方，下沿对齐「库存 / 统计」TabBar 上沿，
                         // 且上下留同样的 10dp —— 不等距会让滑块看起来偏下、像是没到底。
-                        // 注意不能用列表的 contentPadding（96dp）：那个留白属于内容区，
+                        // 注意不能用列表的 contentPadding（152dp）：那个留白属于内容区，
                         // 是让最后一项能滚到 TabBar 上方，与滑块代表的「可视区进度」无关。
                         ScrollIndicator(
                             listState = listState,
@@ -343,7 +375,10 @@ fun InventoryScreen(
             title = { Text(I18n.s("删除「${target.name}」？", "Delete ${target.name}?"), fontSize = 16.sp, fontWeight = FontWeight.Medium) },
             text = {
                 Text(
-                    "数量已为 0，已从库存列表移除。\n是否同时删除该商品？\n\n" +
+                    I18n.s(
+                        "数量已为 0，已从库存列表移除。\n是否同时删除该商品？\n\n",
+                        "Quantity is 0, so it is hidden from the inventory list.\nDelete this item as well?\n\n"
+                    ) +
                         I18n.s("删除后仍可在「统计 → 月度明细」的历史记录中查到它。", "It still appears in Stats -> Monthly details."),
                     fontSize = 13.sp
                 )
@@ -355,7 +390,13 @@ fun InventoryScreen(
                 }) { Text(I18n.s("删除", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text(I18n.s("保留记录", "Keep record")) }
+                TextButton(onClick = {
+                    // 归零写入发生在 adjustQty 的 refreshInventory() 之后，
+                    // 那一刻 usedUp 还查不到这条。保留记录必须再刷一次，
+                    // 否则用户点了「保留」却看不到任何东西。
+                    vm.refreshInventory()
+                    pendingDelete = null
+                }) { Text(I18n.s("保留记录", "Keep record")) }
             }
         )
     }
@@ -520,6 +561,10 @@ private fun ItemRowWithStepper(
  * 分类路径行。
  * 用「·」而不是「/」，因为斜杠在中文语境里容易被读成「或者」。
  * 层级用字号和颜色递减表达：一级最淡、三级最实。
+ *
+ * 每个 Text 必须显式 maxLines = 1：Row 内的 Text 默认可以任意换行，
+ * 英文分类名（如 Digital Accessories · Cables · Data Cable）比中文长得多，
+ * 不加约束时每个词会被挤成竖排，整行变成一堆碎字。
  */
 @Composable
 private fun CategoryPathLine(item: ItemWithCategory) {
@@ -530,27 +575,53 @@ private fun CategoryPathLine(item: ItemWithCategory) {
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (l3 != null) {
-            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            Text(CategoryNames.of(l2 ?: ""), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
-            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+            Text(
+                CategoryNames.of(l1), fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), maxLines = 1)
+            Text(
+                CategoryNames.of(l2 ?: ""), fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), maxLines = 1)
             Text(
                 CategoryNames.of(l3),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
             )
         } else if (l2 != null) {
-            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             Text(
-                l2,
+                CategoryNames.of(l1), fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Text(" · ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), maxLines = 1)
+            Text(
+                CategoryNames.of(l2),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
             )
         } else {
-            Text(CategoryNames.of(l1), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+            Text(
+                CategoryNames.of(l1), fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
         }
     }
 }
@@ -732,6 +803,132 @@ private fun GroupHeader(
                 I18n.s("已折叠", "collapsed"),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+
+/**
+ * 「已用完」分区头。
+ *
+ * 与分类分组头刻意区分：底色更淡、右侧标注「仅保留记录」，
+ * 表示「这不是在库商品」。用户扫视时不应把它误认成又一个分类。
+ */
+@Composable
+private fun UsedUpHeader(
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .clickable { onToggle() }
+            .padding(start = 12.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val rotation by animateFloatAsState(
+            targetValue = if (expanded) 0f else -90f,
+            animationSpec = tween(180),
+            label = "usedUpArrow"
+        )
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = if (expanded) {
+                I18n.s("收起已用完", "Collapse used-up")
+            } else {
+                I18n.s("展开已用完", "Expand used-up")
+            },
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(20.dp)
+                .rotate(rotation)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            I18n.s("已用完 · $count 种", "Used up · $count"),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            I18n.s("仅保留记录", "Records only"),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+    }
+}
+
+/**
+ * 「已用完」商品行。
+ *
+ * 与在库商品行的差别：
+ *   - 数量固定显示 0，没有加减按钮（没有库存可加）
+ *   - 用「恢复 / 删除」替代加减，这是这两个动作在这里唯一有意义的形式
+ *   - 名称与底色都压暗，视觉上退到次级，不与在库商品抢注意力
+ */
+@Composable
+private fun UsedUpRow(
+    item: ItemWithCategory,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f))
+            .padding(start = 14.dp, end = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                item.name,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            CategoryPathLine(item)
+        }
+
+        Text(
+            "0",
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(32.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        TextButton(
+            onClick = onRestore,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text(
+                I18n.s("恢复", "Restore"),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        TextButton(
+            onClick = onDelete,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text(
+                I18n.s("删除", "Delete"),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error
             )
         }
     }
