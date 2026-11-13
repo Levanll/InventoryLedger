@@ -428,7 +428,7 @@ App 截图是纯白（`#FFF`），整站深色，白图直接铺满卡片会像�
 
 ```powershell
 # 1. 改 app/build.gradle.kts 的 versionCode / versionName
-# 2. 更新 CHANGELOG.md、README 里的 APK 文件名与体积
+# 2. 更新 CHANGELOG.md、README、站点里的版本号、APK 文件名与体积
 # 3. 构建并实测
 & "...gradle.bat" assembleDebug assembleRelease --no-daemon --console=plain
 # 4. 装到设备验证（release 版不可调试，run-as 用不了，只能 UI 验证）
@@ -437,7 +437,54 @@ adb install -r -t app/build/outputs/apk/release/app-release.apk
 git add -A && git commit -m "..."
 # 6. 推送
 git push https://x-access-token:<TOKEN>@github.com/Levanll/InventoryLedger.git HEAD:main
-# 7. 创建 Release 并上传 APK（用 GitHub API）
+# 7. 打 tag 并推送
+git tag -a vX.Y.Z -m "..." && git push <同上> vX.Y.Z
+# 8. 创建 Release 并上传 APK
+python scripts/create_release.py X.Y.Z --body notes/vX.Y.Z.md
+# 9. ★ 发版后核对（见下）
+```
+
+### ★ 发版后必须核对状态表
+
+**每一步都跑命令，不要凭印象填。** 发布时容易只顾流程，HANDOFF 第二节
+的「当前状态」表沿用上一版数字——v1.4.0 就这样漏了 APK 体积和行数。
+
+```bash
+# 版本号（三处必须一致）
+grep -E 'versionCode|versionName' app/build.gradle.kts
+grep -n 'v[0-9]' HANDOFF.md | head -3
+grep -n 'versionCode' docs/index.html
+
+# APK 体积（精确到两位小数，与状态表比对）
+ls -l app/build/outputs/apk/release/app-release.apk | awk '{printf "%.2f MB (%d bytes)\n",$5/1048576,$5}'
+
+# 大文件行数（技术债节里写的数字）
+for f in InboundScreen MainViewModel InventoryScreen; do
+  printf "%-18s %s\n" "$f" "$(wc -l < app/src/main/java/cn/levanll/inventory/ui/$f.kt)"
+done
+
+# .kt 文件总数（十六节「第一件事」里写的数字）
+find app/src/main/java/cn/levanll/inventory -name "*.kt" | wc -l
+
+# tag 指向与实际 HEAD（打 tag 后若还有补丁，状态表要说明）
+git rev-parse vX.Y.Z^{commit}
+git log --oneline vX.Y.Z..HEAD
+
+# 旧版本号是否还有残留（只应剩升级链等历史引用）
+grep -rn "旧版本号" README.md README_EN.md docs/index.html docs/en/index.html
+```
+
+**最后一条尤其重要**：v1.4.0 发布时漏改了 6 处版本号字符串
+（hero-badge、APK 文件名、versionCode、adb 示例、升级链），
+推送到线上后才被发现。改完必须 grep 一遍。
+
+**站点显示旧内容时先查 Pages 构建状态**，不要急着改文件：
+
+```bash
+# 用 token 查（匿名访问这个端点会 404）
+curl -H "Authorization: Bearer <TOKEN>" \
+  https://api.github.com/repos/Levanll/InventoryLedger/pages/builds/latest
+# status=built 且 commit 指向最新提交，才说明站点真的更新了
 ```
 
 ### Release 描述必须是中英对照
