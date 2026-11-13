@@ -63,6 +63,7 @@
 - **「已用完」分区**（v1.3.0）：归零保留后出现在列表底部，展开可恢复 / 删除
 - **空库存边界**（v1.3.1）：主列表为空但已用完有内容时，分区仍正常显示（这条 1.3.0 有缺陷，1.3.1 修复）
 - **覆盖升级链**：v1.0.0→v1.2.0、v1.2.0→v1.3.0、v1.3.0→v1.3.1 均实测通过
+- **应用内更新**（v1.4.0，模拟器 x86_64 API 34）：首次询问同意 → 检测到新版 → 下载 → 签名校验 → 系统安装器 → 升级成功（v1.3.0 → v1.3.1）；24 小时清理双向验证通过
 
 在 **HUAWEI HBN-AL80 / HarmonyOS 4.2（Android 12 底座，无 GMS）** 上验证过扫码能读出 `6972046811374`。**这条是关键**：证明不依赖 Google 服务。
 
@@ -73,6 +74,8 @@
 - 条码查询对国产 69 码覆盖约 60–70%
 - **v1.3.1 的条码缓存失效修复未真机验证**：需实体条码 + 扫码 + 触发改名冲突 + 重扫，设备上没有可扫的实物。正确性依据是代码路径核对（`remember()` 末尾原本有 `cache.remove`，重构后被绕过，现已显式补上）
 - 站点未在移动端真机验证（仅桌面 Chrome 1280 / 2560 宽）
+- **v1.4.0 的应用内更新只在模拟器上验证**，未在真机跑过。真机差异主要在：厂商对「安装未知应用」的额外拦截、后台进程被杀的时机、移动网络下的下载中断
+- **v1.4.0 的更新检查依赖 GitHub API**，国内网络下可能不稳。设计上是静默失败，但真实可用率未测
 
 ---
 
@@ -677,11 +680,69 @@ null 时弹一次询问框。拒绝写进 SharedPreferences，此后 `check()` �
 
 Android 8+ 还要 `canRequestPackageInstalls()` 检查，否则用户点安装没反应。
 
-### 真机验证方法（下次还用得上）
+### 验证中发现并修掉的一个缺陷
+
+第一次装 v1.4.0 后每个冷启动都会**先闪一下「允许检查更新？」再自动消失**。
+
+根因：`SettingsUiState.updateCheckEnabled` 的 `null` 有两种含义 ——
+「还没从磁盘加载完」和「加载完了但用户确实没表态」。两者都是 null，
+于是第一帧必然渲染询问框，等 `initUpdateState()` 读完磁盘才被真实值覆盖。
+
+修法：加 `consentLoaded` 字段，弹窗条件改为
+`consentLoaded && updateCheckEnabled == null`；「发现新版本」的条件也从
+`!= null` 收紧为 `== true`（原写法会把加载中的 null 也算进去）。
+
+**教训**：状态字段用 `null` 表达"未知"时，要区分「还不知道」与「知道了是没有」。
+只要这个字段能驱动 UI，就必须配一个 loaded 标志，否则冷启动第一帧会闪。
+
+### 真机验证方法（2026-11-13 在模拟器上实际走通）
 
 已是最新版的 App 检测不到更新，所以要**临时把 versionName 改低**构建一个包
-（如 `1.3.0` / versionCode 4）装上，它就会检测到远端有新版，从而完整走一遍
+装上，它就会检测到远端有新版，从而完整走一遍
 同意 → 提示 → 下载 → 校验 → 安装 → 清理。验证完装回正式包。
+
+**必须用 release 降版包，不能用 debug 包。** 这一条用血的教训换来的：
+第一次用 debug 包（versionName 改低）测试，下载下来的是 release 包，
+两者签名不同 —— **我们自己的签名校验逻辑正确地拦下了它**，提示
+「安装包校验失败，请重试」。这既证明了校验有效，也说明 debug 包走不完流程。
+
+**完整升级链实测通过**（模拟器 stoveside34 / x86_64 API 34）：
+v1.3.0(4) → 下载 v1.3.1 的 APK → 系统安装器 → v1.3.1(5)。
+
+**自动清理双向验证**：把 cache 里的 APK `touch -d @<25小时前>` 后重启，
+文件被删；新建的文件保留不动。24 小时阈值工作正常。
+
+`res/xml/` 是空目录名，`file_paths.xml` 是 v1.4.0 新建的，不要以为原来就有。
+
+### 模拟器环境（供以后复用）
+
+```bash
+export ANDROID_AVD_HOME=F:/android-dev/avd
+export ANDROID_SDK_ROOT=F:/android-dev/sdk ANDROID_HOME=F:/android-dev/sdk
+cd F:/android-dev/sdk/emulator && ./emulator.exe -avd stoveside34 \
+  -no-snapshot -no-audio -no-window -gpu swiftshader_indirect \
+  -no-boot-anim -port 5554
+```
+
+**踩过的坑：这台机器上 adb server 会被反复杀掉。**
+表现为每次 `adb` 调用都打印 `daemon not running; starting now`，
+紧接着 `device offline`，命令尾部还会挂住不返回。
+
+应对：
+1. 把 `start-server` 与后续操作**放在同一个 shell 调用里**，
+   中间留 4–6 秒等 server 起稳
+2. 每次调用完用 `job_kill` 收尾，否则挂住的任务会一直占着
+3. **不要**设 `ADB_SERVER_SOCKET=tcp:127.0.0.1:5037`，会让连接更糟
+   （报 `cannot start server on remote host`）
+4. 卡死后 `adb kill-server` + `start-server` 能恢复，但要重新等设备上线
+
+关闭模拟器用 `adb -s emulator-5554 emu kill`；`emulator.exe` 进程可能残留，
+属正常，qemu 子进程退出即可。
+
+**验证时的一个操作顺序坑**：卸载重装会把「安装未知应用」的授权清零
+（该权限按包名保存），所以每次重装后做应用内更新，都要重新授权一次。
+第一次授权后要**先在设置页打开开关 → 返回应用**，弹窗才会自动重试；
+若先返回再点，会再次跳到设置页（这是 `retryInstallAfterPermission` 的预期行为）。
 
 ---
 
