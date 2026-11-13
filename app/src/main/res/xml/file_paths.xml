@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    只暴露 cacheDir/updates/ 这一层给 FileProvider。
+    不要写成 <cache-path path="/" /> 或 <root-path>，那等于把整个缓存/根目录
+    交给系统安装器，超出「传一个 APK」的实际需要。
+-->
+<paths>
+    <cache-path
+        name="updates"
+        path="updates/" />
+</paths>

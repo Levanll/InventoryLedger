@@ -69,6 +69,12 @@ fun StatsScreen(vm: MainViewModel) {
     val s by vm.statsState.collectAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
     var showCatManage by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+
+    if (showSettings) {
+        SettingsScreen(vm = vm, onClose = { showSettings = false })
+        return
+    }
 
     if (showCatManage) {
         CategoryManageScreen(vm = vm, onClose = { showCatManage = false })
@@ -121,6 +127,15 @@ fun StatsScreen(vm: MainViewModel) {
                         showCatManage = true
                     }
                     .padding(8.dp)
+            )
+            Text(
+                "⋯",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable { showSettings = true }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
 

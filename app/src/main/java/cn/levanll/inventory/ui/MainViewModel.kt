@@ -22,9 +22,13 @@ import cn.levanll.inventory.domain.InventoryService
 import cn.levanll.inventory.domain.MonthItemRow
 import cn.levanll.inventory.domain.MonthOverview
 import cn.levanll.inventory.domain.StatsService
+import cn.levanll.inventory.domain.UpdateChecker
+import cn.levanll.inventory.domain.UpdateDownloader
+import cn.levanll.inventory.domain.UpdateInfo
 import cn.levanll.inventory.domain.YearMonth
 import cn.levanll.inventory.domain.startOfDay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -129,6 +133,29 @@ data class CategoryManageState(
     val error: String? = null
 )
 
+/** 设置面板状态 */
+data class SettingsUiState(
+    /** 是否允许检查更新；null 表示还没问过用户 */
+    val updateCheckEnabled: Boolean? = null,
+    val checking: Boolean = false,
+    /** 检测到的新版本；null 表示已是最新或还没查过 */
+    val newVersion: UpdateInfo? = null,
+    val currentVersion: String = "",
+    val currentCode: Int = 0,
+    /** 上次检查的结果提示，用于「立即检查」后的反馈 */
+    val lastCheckMessage: String? = null
+)
+
+/** 更新下载状态 */
+sealed class DownloadUiState {
+    object Idle : DownloadUiState()
+    data class Running(val percent: Int, val done: Long, val total: Long) : DownloadUiState()
+    object Verifying : DownloadUiState()
+    /** 需要先授权「安装未知应用」 */
+    object NeedInstallPermission : DownloadUiState()
+    data class Failed(val message: String) : DownloadUiState()
+}
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val db = AppDatabase.get(app)
@@ -137,6 +164,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val stats = StatsService(db)
     private val barcodeLookup = BarcodeLookupService(db)
     private val catSvc = CategoryService(db)
+    private val updateChecker = UpdateChecker(app)
+    private val updateDownloader = UpdateDownloader(app)
 
     private val _inventory = MutableStateFlow(InventoryUiState())
     val inventory: StateFlow<InventoryUiState> = _inventory.asStateFlow()
@@ -150,6 +179,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _catManage = MutableStateFlow(CategoryManageState())
     val catManage: StateFlow<CategoryManageState> = _catManage.asStateFlow()
 
+    private val _settings = MutableStateFlow(SettingsUiState())
+    val settings: StateFlow<SettingsUiState> = _settings.asStateFlow()
+
+    private val _download = MutableStateFlow<DownloadUiState>(DownloadUiState.Idle)
+    val download: StateFlow<DownloadUiState> = _download.asStateFlow()
+
+    /** 正在下载时的协程，取消用 */
+    private var downloadJob: Job? = null
+
     private val _toast = MutableStateFlow<String?>(null)
     val toast: StateFlow<String?> = _toast.asStateFlow()
 
@@ -159,11 +197,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             // 种子：全新安装补全三级分类；从旧版升级补齐缺失的三级
-            withContext(Dispatchers.IO) { SeedData.ensureSeeded(db) }
+            // 顺带清理升级后残留的安装包（续期 24h，见 UpdateDownloader.cleanupStale）
+            withContext(Dispatchers.IO) {
+                SeedData.ensureSeeded(db)
+                updateDownloader.cleanupStale()
+            }
+            initUpdateState()
             refreshInventory()
             refreshStats()
             // 进入应用即检查已过期商品，非空则弹窗提醒
             checkExpiredOnLaunch()
+            // 更新检查放在最后，异步执行，不阻塞首屏
+            autoCheckForUpdate()
         }
     }
 
@@ -991,6 +1036,156 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val cats = withContext(Dispatchers.IO) { catSvc.listForPick() }
             _inbound.value = _inbound.value.copy(allCats = cats)
+        }
+    }
+
+    // ==========================================================
+    // 更新检查
+    // ==========================================================
+
+    private fun initUpdateState() {
+        val app = getApplication<Application>()
+        val info = try {
+            app.packageManager.getPackageInfo(app.packageName, 0)
+        } catch (e: Exception) {
+            null
+        }
+        _settings.value = _settings.value.copy(
+            updateCheckEnabled = updateChecker.consentState(),
+            currentVersion = info?.versionName ?: "",
+            currentCode = info?.let {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    it.longVersionCode.toInt()
+                } else {
+                    @Suppress("DEPRECATION")
+                    it.versionCode
+                }
+            } ?: 0
+        )
+    }
+
+    /** 首次启动询问用户是否允许检查更新 */
+    fun setUpdateCheckEnabled(enabled: Boolean) {
+        updateChecker.setEnabled(enabled)
+        _settings.value = _settings.value.copy(updateCheckEnabled = enabled)
+        if (enabled) autoCheckForUpdate()
+    }
+
+    /**
+     * 启动时自动检查。只在用户已允许且未被 24 小时闸拦下时才会真正发请求。
+     * 有新版就写进状态，由 UI 弹窗；查不到什么都不做。
+     */
+    private fun autoCheckForUpdate() {
+        if (updateChecker.consentState() != true) return
+        viewModelScope.launch {
+            val info = updateChecker.check(force = false)
+            if (info != null) {
+                _settings.value = _settings.value.copy(newVersion = info)
+            }
+        }
+    }
+
+    /** 设置面板里点版本行：强制检查，跳过 24 小时闸，并给明确反馈 */
+    fun checkForUpdateManually() {
+        if (_settings.value.checking) return
+        _settings.value = _settings.value.copy(checking = true, lastCheckMessage = null)
+        viewModelScope.launch {
+            val info = updateChecker.check(force = true)
+            _settings.value = _settings.value.copy(
+                checking = false,
+                newVersion = info,
+                lastCheckMessage = if (info == null) {
+                    I18n.s("已是最新版本", "Already up to date")
+                } else {
+                    null
+                }
+            )
+        }
+    }
+
+    /** 「以后再说」：只关掉本次弹窗，下次启动仍会提醒 */
+    fun dismissUpdate() {
+        _settings.value = _settings.value.copy(newVersion = null)
+    }
+
+    fun clearCheckMessage() {
+        _settings.value = _settings.value.copy(lastCheckMessage = null)
+    }
+
+    // ---- 下载与安装 ----
+
+    fun startUpdateDownload() {
+        val info = _settings.value.newVersion ?: return
+        if (_download.value is DownloadUiState.Running) return
+
+        // 授权没开就先去开，开了再回来点一次
+        if (!updateDownloader.canInstall()) {
+            _download.value = DownloadUiState.NeedInstallPermission
+            updateDownloader.openInstallPermissionSettings()
+            return
+        }
+
+        downloadJob = viewModelScope.launch {
+            _download.value = DownloadUiState.Running(0, 0, info.sizeBytes)
+            try {
+                val apk = updateDownloader.download(
+                    url = info.downloadUrl,
+                    expectedSize = info.sizeBytes
+                ) { pct, done, total ->
+                    _download.value = DownloadUiState.Running(pct, done, total)
+                }
+
+                _download.value = DownloadUiState.Verifying
+                if (!updateDownloader.verifySignature(apk)) {
+                    updateDownloader.discard()
+                    apk.delete()
+                    _download.value = DownloadUiState.Failed(
+                        I18n.s("安装包校验失败，请重试", "Package verification failed, please retry")
+                    )
+                    return@launch
+                }
+
+                // 唤起系统安装器。文件不在这里删 —— 安装是异步的，
+                // 立即删除会和系统读取抢跑，导致「解析包时出现问题」。
+                // 由下次启动的 cleanupStale() 清理。
+                updateDownloader.install(apk)
+                _download.value = DownloadUiState.Idle
+                _settings.value = _settings.value.copy(newVersion = null)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                updateDownloader.discard()
+                _download.value = DownloadUiState.Idle
+                throw e
+            } catch (e: Exception) {
+                updateDownloader.discard()
+                _download.value = DownloadUiState.Failed(
+                    e.message ?: I18n.s("下载失败", "Download failed")
+                )
+            }
+        }
+    }
+
+    fun cancelUpdateDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        updateDownloader.discard()
+        _download.value = DownloadUiState.Idle
+    }
+
+    fun dismissDownloadError() {
+        _download.value = DownloadUiState.Idle
+    }
+
+    /** 用户从「安装未知应用」设置页回来后，重新走下载流程 */
+    fun retryInstallAfterPermission() {
+        // 先清掉「需要授权」状态，否则再进 startUpdateDownload 时
+        // canInstall() 仍为 false，会立刻又被设回这个状态，形成死循环
+        _download.value = DownloadUiState.Idle
+        if (updateDownloader.canInstall()) {
+            startUpdateDownload()
+        } else {
+            // 用户还没真正授权（可能只是切回来），再跳一次设置页
+            updateDownloader.openInstallPermissionSettings()
+            _download.value = DownloadUiState.NeedInstallPermission
         }
     }
 }

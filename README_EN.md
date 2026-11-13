@@ -20,7 +20,7 @@
 
 A personal inventory app for Android: add items by scanning a barcode or typing, adjust quantities right in the list, and **expiring items are tracked and sorted by urgency** — with an expired-item summary every time you open the app.
 
-Three things set it apart from other inventory apps: **it understands three category levels** (Beauty & Care → Skincare → Serum, with same-category items always grouped together and never split by expiry), **it runs entirely offline** (local Room database, no account, no cloud sync — the network is only used for barcode lookup, and failure changes nothing), and **its data is auditable** (records are append-only, undo writes a compensating entry, and monthly movements trace back to the individual transaction).
+Three things set it apart from other inventory apps: **it understands three category levels** (Beauty & Care → Skincare → Serum, with same-category items always grouped together and never split by expiry), **it runs entirely offline** (local Room database, no account, no cloud sync — the network is used only for barcode lookup and update checks, both optional and both safe to fail), and **its data is auditable** (records are append-only, undo writes a compensating entry, and monthly movements trace back to the individual transaction).
 
 ---
 
@@ -84,8 +84,8 @@ Adjust quantities with `−/+` on each row. Reaching zero asks whether to delete
 |---|---|
 | OS | Android 7.0 (API 24) and above |
 | Storage | About 10 MB |
-| Permissions | Camera (requested only when scanning, can be denied); Network (barcode lookup only) |
-| Network | Optional. Everything except barcode lookup works offline |
+| Permissions | Camera (requested only when scanning, can be denied); Network (barcode lookup and update checks); Install apps (in-app updates only) |
+| Network | Optional. Everything except barcode lookup and update checks works offline; update checks can be turned off |
 
 ---
 
@@ -283,10 +283,10 @@ Notable spots:
 
 | Question | Answer |
 |---|---|
-| Does it upload my data? | **No.** No account, no sync, no analytics. Everything is in a local Room database |
-| Does it use the network? | Only for barcode lookup, against `openfoodfacts.org` and `go-upc.com`, sending **the barcode alone** |
-| Can I use it fully offline? | Yes. Everything except barcode lookup works without a network |
-| What permissions? | Camera (scanning only) and network (lookup only). **No storage, contacts, location or notification permissions** |
+| Does it upload my data? | **No.** No account, no sync, no analytics. Everything is in a local Room database. If update checks are enabled, the app requests the latest version number from GitHub once per launch; that request carries no inventory or personal data |
+| Does it use the network? | For barcode lookup against `openfoodfacts.org` and `go-upc.com`, sending **the barcode alone**; and for optional update checks against the `api.github.com` version endpoint |
+| Can I use it fully offline? | Yes. Everything except barcode lookup and update checks works without a network |
+| What permissions? | Camera (scanning), network (lookup and update checks), and install apps (in-app updates only). **No storage, contacts, location or notification permissions** |
 | Where is the data? | `/data/data/cn.levanll.inventory/databases/inventory.db` |
 | How do I delete everything? | Uninstall the app; Android removes the private directory |
 

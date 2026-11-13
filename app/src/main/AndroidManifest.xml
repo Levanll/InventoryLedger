@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 条码查商品信息需要联网；查不到或离线时应用照常可用。 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+        应用内更新需要安装 APK。
+        Android 8.0+ 除了这个声明，还要用户在系统设置里对本应用单独授权，
+        首次安装更新时会弹一次「允许安装未知应用」。
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -37,6 +43,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            FileProvider：把 cacheDir/updates 下下载好的 APK 以 content:// 暴露给系统安装器。
+            Android 7.0+ 禁止用 file:// 跨应用传文件（FileUriExposedException），
+            必须走 FileProvider + FLAG_GRANT_READ_URI_PERMISSION。
+            exported=false 且只授权读，其他应用拿不到这个目录。
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

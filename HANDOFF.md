@@ -1,7 +1,7 @@
 # HANDOFF — 项目交接
 
 > 给接手这个项目的下一个 AI 会话 / 开发者。读完这一份就能继续干活，不必翻历史对话。
-> 最后更新：2026-11-10，对应 v1.3.1。
+> 最后更新：2026-11-13，对应 v1.4.0。
 
 ---
 
@@ -30,8 +30,8 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.3.1**（versionCode 5） |
-| Release | GitHub 上 `v1.3.1` / `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 五个，都有 APK，**全部为中英对照** |
+| 版本 | **v1.4.0**（versionCode 6） |
+| Release | GitHub 上 `v1.4.0` / `v1.3.1` / `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 六个，都有 APK，**全部为中英对照** |
 | APK 体积 | 2.61 MB（R8 混淆后） |
 | 分支 | `main`，工作区干净 |
 | 最近提交 | 见 `git log --oneline -1`；v1.3.1 的发版提交为 `e1cfe4d`。**不要在这里写死 SHA**，每提交一次就过期 |
@@ -347,7 +347,7 @@ val locale = if (I18n.lang == Lang.ZH) Locale.getDefault() else Locale.ENGLISH
 |---|---|
 | `README.md` | 中文主 README，含界面预览 |
 | `README_EN.md` | 英文 README，结构与中文对称 |
-| `CHANGELOG.md` | 按版本记录，1.3.1 在最上 |
+| `CHANGELOG.md` | 按版本记录，1.4.0 在最上 |
 | `SECURITY.md` | 漏洞报告渠道 |
 | `HANDOFF.md` | 本文件 |
 | `docs/设计方案.md` | 数据模型、事务纪律、分类机制、i18n、迁移链 |
@@ -624,6 +624,67 @@ APK 已发出，重传同一 tag 的资产会破坏「tag 对应一份确定产�
 
 ---
 
+## 十二·七、应用内更新（v1.4.0）
+
+### 三个文件的分工
+
+| 文件 | 职责 |
+|---|---|
+| `domain/UpdateChecker.kt` | 查 GitHub Releases、语义化版本比较、24 小时闸、隐私同意状态 |
+| `domain/UpdateDownloader.kt` | 下载（.tmp → 改名）、签名校验、唤起安装器、启动时清理 |
+| `ui/UpdateDialogs.kt` | 五个弹窗（同意 / 新版本 / 下载中 / 校验中 / 失败 / 需授权） |
+
+### 隐私：为什么首次启动要问
+
+这个项目一贯不替用户做决定（保存弹窗确认、条码冲突三选一、归零问删还是留）。
+检查更新同样如此：`consentState()` 是**三态**（null = 没问过，true / false），
+null 时弹一次询问框。拒绝写进 SharedPreferences，此后 `check()` 第一行就 return，
+一次请求都不发。
+
+### 几个容易做错的点
+
+**版本比较不能用字符串**：`"1.10.0" < "1.9.0"` 按字典序为真，会漏掉更新。
+`isNewer()` 逐段比数字，缺段补 0，解析不出的段按 0 处理 —— 宁可漏报也不误报，
+误报会让用户看到一个装不上的「新版本」。
+
+**下载地址必须从 assets 取**，不能按版本号拼：文件名 `InventoryLedger-1.4.0.apk`
+带版本号，拼错就 404。
+
+**先写 .tmp 再改名**：否则下载中断留下的半截文件会被 `listFiles()` 扫到，
+可能被当成「已下载完成」。
+
+**不能在触发安装后立刻删文件**：`startActivity(ACTION_VIEW)` 是异步的，
+本进程可能立刻被切到后台，此时删文件会和系统安装器抢读，
+表现为「解析包时出现问题」。正确做法是**下次启动时**删
+（`UpdateDownloader.cleanupStale()`，阈值 24 小时，给同会话重试留余地）。
+
+**放 cacheDir 不放 filesDir**：cacheDir 在存储紧张时系统会自动回收，
+是「可以随时丢」的语义。filesDir 不会被自动清，写错了就永久占用用户空间。
+
+**`retryInstallAfterPermission()` 要防死循环**：用户从「安装未知应用」设置页
+返回后，若仍未授权，直接调 `startUpdateDownload()` 会立刻又被设回
+`NeedInstallPermission`，形成弹窗反复跳。现在的做法是「未授权则再跳一次设置页」。
+
+### 权限与 FileProvider
+
+新增 `REQUEST_INSTALL_PACKAGES`。Android 7.0+ 不能用 `file://` 跨应用传文件
+（FileUriExposedException），必须走 FileProvider：
+
+- `res/xml/file_paths.xml` 只暴露 `cache-path` 的 `updates/` 子目录，
+  **不要写 `path="/"` 或 `<root-path>`**，那等于把整个缓存/根目录交出去
+- Manifest 里 `exported="false"` + `grantUriPermissions="true"`
+- 安装 Intent 必须加 `FLAG_GRANT_READ_URI_PERMISSION`
+
+Android 8+ 还要 `canRequestPackageInstalls()` 检查，否则用户点安装没反应。
+
+### 真机验证方法（下次还用得上）
+
+已是最新版的 App 检测不到更新，所以要**临时把 versionName 改低**构建一个包
+（如 `1.3.0` / versionCode 4）装上，它就会检测到远端有新版，从而完整走一遍
+同意 → 提示 → 下载 → 校验 → 安装 → 清理。验证完装回正式包。
+
+---
+
 ## 十三、设计决策（不要轻易推翻）
 
 | 决策 | 理由 |
@@ -761,7 +822,7 @@ git log --oneline -3          # 看最近三个提交，确认在 main 上
 git status                    # 确认工作区干净
 git config user.name          # 应为 InventoryLedger Bot
 Get-ChildItem app\src\main\java\cn\levanll\inventory -Recurse -Filter *.kt | Measure-Object
-# 应该是 26 个文件（v1.3.1 起；新增文件时同步这个数字）
+# 应该是 30 个文件（v1.4.0 起；新增文件时同步这个数字）
 ```
 
 **不要靠 SHA 核对起点**：每次提交都会让它过期，用 `git log` 看提交标题判断即可。

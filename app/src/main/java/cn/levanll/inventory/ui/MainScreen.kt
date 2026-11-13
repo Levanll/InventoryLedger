@@ -49,6 +49,8 @@ fun MainScreen(vm: MainViewModel) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val toast by vm.toast.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val download by vm.download.collectAsState()
 
     LaunchedEffect(toast) {
         toast?.let {
@@ -128,6 +130,63 @@ fun MainScreen(vm: MainViewModel) {
                     vm.resetInbound()
                 }
             )
+        }
+    }
+
+    // ==========================================================
+    // 更新相关弹窗
+    //
+    // 挂在 MainScreen 而不是某个 Tab：更新提示与当前在看哪个页面无关，
+    // 而且它可能在任意页面里被触发（设置面板里的手动检查）。
+    // ==========================================================
+
+    // 优先级最高：首次启动还没表态过
+    when (settings.updateCheckEnabled) {
+        null -> UpdateConsentDialog(
+            onAllow = { vm.setUpdateCheckEnabled(true) },
+            onDeny = { vm.setUpdateCheckEnabled(false) }
+        )
+        else -> Unit
+    }
+
+    // 下载中 / 校验中的状态优先于「发现新版本」
+    when (val d = download) {
+        is DownloadUiState.Running -> UpdateDownloadDialog(
+            percent = d.percent,
+            done = d.done,
+            total = d.total,
+            onCancel = { vm.cancelUpdateDownload() }
+        )
+
+        DownloadUiState.Verifying -> UpdateVerifyingDialog()
+
+        is DownloadUiState.Failed -> UpdateFailedDialog(
+            message = d.message,
+            onRetry = {
+                vm.dismissDownloadError()
+                vm.startUpdateDownload()
+            },
+            onDismiss = { vm.dismissDownloadError() }
+        )
+
+        DownloadUiState.NeedInstallPermission -> UpdateNeedPermissionDialog(
+            onOpenSettings = {
+                vm.retryInstallAfterPermission()
+            },
+            onDismiss = { vm.dismissDownloadError() }
+        )
+
+        DownloadUiState.Idle -> {
+            // 没有下载任务时才显示「发现新版本」
+            val nv = settings.newVersion
+            if (nv != null && settings.updateCheckEnabled != null) {
+                NewVersionDialog(
+                    info = nv,
+                    currentVersion = settings.currentVersion,
+                    onUpdate = { vm.startUpdateDownload() },
+                    onLater = { vm.dismissUpdate() }
+                )
+            }
         }
     }
 }
