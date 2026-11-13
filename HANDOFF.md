@@ -32,9 +32,9 @@
 |---|---|
 | 版本 | **v1.4.0**（versionCode 6） |
 | Release | GitHub 上 `v1.4.0` / `v1.3.1` / `v1.3.0` / `v1.2.0` / `v1.1.0` / `v1.0.0` 六个，都有 APK，**全部为中英对照** |
-| APK 体积 | 2.61 MB（R8 混淆后） |
+| APK 体积 | 2.63 MB（R8 混淆后，versionCode 6） |
 | 分支 | `main`，工作区干净 |
-| 最近提交 | 见 `git log --oneline -1`；v1.4.0 的发版提交为 `d401c69`。**不要在这里写死 SHA**，每提交一次就过期 |
+| 最近提交 | 见 `git log --oneline -1`。v1.4.0 的 tag 指向 `d401c69`，其后还有 `f4118f5`（修正站点版本号漏改）。**不要在这里写死 SHA**，每提交一次就过期 |
 | 产品站点 | https://levanll.github.io/InventoryLedger/ ，源为 `main` 的 `/docs`，状态 `built` |
 | 站点语言 | `/` 中文，`/en/` 英文 |
 | 提交身份 | `InventoryLedger Bot <125116742+Levanll@users.noreply.github.com>` |
@@ -782,7 +782,7 @@ cd F:/android-dev/sdk/emulator && ./emulator.exe -avd stoveside34 \
 ### 技术债 / 可改进处
 
 - `InboundScreen.kt` 899 行，是最大的单文件，可拆分
-- `MainViewModel.kt` 996 行，职责偏多
+- `MainViewModel.kt` 1207 行，职责偏多（v1.4.0 加更新流程后又长了 200 多行，拆分优先级上升）
 - `InventoryScreen.kt` 940 行
 - 扫码功能尚未在荣耀设备实测
 - 站点未做移动端真机验证，窄屏下轮播与表格的换行未确认
