@@ -140,13 +140,15 @@ fun MainScreen(vm: MainViewModel) {
     // 而且它可能在任意页面里被触发（设置面板里的手动检查）。
     // ==========================================================
 
-    // 优先级最高：首次启动还没表态过
-    when (settings.updateCheckEnabled) {
-        null -> UpdateConsentDialog(
+    // 优先级最高：首次启动还没表态过。
+    // 必须同时满足"已从磁盘加载完"与"确实没表态"，否则冷启动第一帧会先闪
+    // 一下询问框再被真实值覆盖——用户明明同意/拒绝过，却每次都看到它，
+    // 还可能在那几百毫秒里误点。
+    if (settings.consentLoaded && settings.updateCheckEnabled == null) {
+        UpdateConsentDialog(
             onAllow = { vm.setUpdateCheckEnabled(true) },
             onDeny = { vm.setUpdateCheckEnabled(false) }
         )
-        else -> Unit
     }
 
     // 下载中 / 校验中的状态优先于「发现新版本」
@@ -179,7 +181,7 @@ fun MainScreen(vm: MainViewModel) {
         DownloadUiState.Idle -> {
             // 没有下载任务时才显示「发现新版本」
             val nv = settings.newVersion
-            if (nv != null && settings.updateCheckEnabled != null) {
+            if (nv != null && settings.updateCheckEnabled == true) {
                 NewVersionDialog(
                     info = nv,
                     currentVersion = settings.currentVersion,

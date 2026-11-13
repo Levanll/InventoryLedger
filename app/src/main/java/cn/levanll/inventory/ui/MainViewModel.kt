@@ -135,8 +135,18 @@ data class CategoryManageState(
 
 /** 设置面板状态 */
 data class SettingsUiState(
-    /** 是否允许检查更新；null 表示还没问过用户 */
+    /**
+     * 是否允许检查更新。
+     *
+     * null 有歧义，不能单独用来判断"要不要弹询问框"：
+     *   - 尚未从磁盘加载（冷启动第一帧）
+     *   - 加载完了，但用户确实还没表态过
+     * 两者都是 null，于是每次冷启动都会先闪一下询问框。
+     * 用 [consentLoaded] 区分：只有"已加载 且 仍为 null"才该弹。
+     */
     val updateCheckEnabled: Boolean? = null,
+    /** 同意状态是否已从磁盘读出。false 表示还在加载，此时不应弹任何询问框 */
+    val consentLoaded: Boolean = false,
     val checking: Boolean = false,
     /** 检测到的新版本；null 表示已是最新或还没查过 */
     val newVersion: UpdateInfo? = null,
@@ -1052,6 +1062,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         _settings.value = _settings.value.copy(
             updateCheckEnabled = updateChecker.consentState(),
+            // 读完磁盘才允许 UI 决定是否弹询问框。放在同一 copy 里，
+            // 保证"值"与"已加载"这两个字段不会出现一个更新一个没更新的中间态。
+            consentLoaded = true,
             currentVersion = info?.versionName ?: "",
             currentCode = info?.let {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -1067,7 +1080,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** 首次启动询问用户是否允许检查更新 */
     fun setUpdateCheckEnabled(enabled: Boolean) {
         updateChecker.setEnabled(enabled)
-        _settings.value = _settings.value.copy(updateCheckEnabled = enabled)
+        _settings.value = _settings.value.copy(
+            updateCheckEnabled = enabled,
+            consentLoaded = true,
+        )
         if (enabled) autoCheckForUpdate()
     }
 
